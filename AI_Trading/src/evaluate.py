@@ -31,48 +31,38 @@ def computeReturns(actions, trade):
     df_portfolio_value = pd.DataFrame({'date': all_date, 'portfolio_value':portfolio_value})
     returns = get_daily_return(df_portfolio_value, value_col_name='portfolio_value')
     df_returns = returns.to_frame()
-    df_returns.to_csv(config.RESULTS_DIR + 'df_returns.csv')
-    df_portfolio_value.to_csv(config.RESULTS_DIR + 'df_portfolio_value.csv')
-    return returns
+    df_returns['date'] = all_date
+    return df_returns, df_portfolio_value
 
-def getDRLStats(df_daily_return):
-    DRL_start = convert_daily_return_to_pyfolio_ts(df_daily_return)
+def getStats(df_daily_return):
+    pyfolio_ts = convert_daily_return_to_pyfolio_ts(df_daily_return)
     perf_func = timeseries.perf_stats 
-    perf_stats_all = perf_func( returns=DRL_start, 
-                                factor_returns=DRL_start, 
+    perf_stats_all = perf_func( returns=pyfolio_ts,
+                                factor_returns=pyfolio_ts,
                                 positions=None, transactions=None, turnover_denom="AGB")
-    return DRL_start, perf_stats_all
+    return pyfolio_ts, perf_stats_all
 
-def getEqualWeightStats(trade):
+def getEqualWeightActions(trade):
     all_date = trade.date.unique().tolist()
-    baseline = []
-    for day in all_date:
-        day_close = trade[trade["date"] == day].close.tolist()
-        avg_close = sum(day_close) / len(day_close)
-        baseline.append(avg_close)
-    baseline_df = pd.DataFrame ({'date': all_date, 'close':baseline})
-    stats = backtest_stats(baseline_df, value_col_name = 'close')
-    baseline_returns = get_daily_return(baseline_df, value_col_name="close")
-    baseline_df.to_csv(config.RESULTS_DIR + 'df_qualWeight_close.csv')
-    return baseline_returns, stats
+    tics = trade.tic.unique().tolist()
+    ticNums = len(tics)
+    equalWeightActions_df = pd.DataFrame({'date':all_date})
+    for tic in tics:
+        equalWeightActions_df[tic] = [1/ticNums] * len(all_date)
+    equalWeightActions_df.set_index('date')
+    return equalWeightActions_df
 
-def getSingleStats(trade, tic):
-    # all in single product
+def getTicActions(trade, tic):
     all_date = trade.date.unique().tolist()
-    value = []
-    for index,day in enumerate(all_date):
-        if index == 0:
-            value.append(config.INITIAL_AMOUNT)
+    tics = trade.tic.unique().tolist()
+    ticActions_df = pd.DataFrame({'date':all_date})
+    for t in tics:
+        if t == tic:
+            ticActions_df[t] = [1] * len(all_date)
         else:
-            close_today = trade['close'].loc[(trade['date']==day) & (trade['tic'] == tic)].values
-            close_lastDay = trade['close'].loc[(trade['date']==all_date[index-1]) & (trade['tic'] == tic)].values
-            portfolio_return = (close_today / close_lastDay)-1
-            new_value = value[index-1]*(1+portfolio_return)
-            value.append(new_value[0])
-    df_value = pd.DataFrame({'date': all_date, 'portfolio_value':value})
-    stats = backtest_stats(df_value, value_col_name = 'portfolio_value')
-    returns = get_daily_return(df_value, value_col_name='portfolio_value')
-    return returns, stats
+            ticActions_df[t] = [0] * len(all_date)
+    ticActions_df.set_index('date')
+    return ticActions_df
 
 def getMinVariance(trade):
     unique_tic = trade.tic.unique()
@@ -150,7 +140,7 @@ def cumulativeReturnPlot(df_daily_return, portfolio, equalWeight_returns, all_st
             traceorder="normal",
             font=dict(
                 family="sans-serif",
-                size=15,
+                size=10,
                 color="black"
             ),
             bgcolor="White",
@@ -183,7 +173,6 @@ def cumulativeReturnPlot(df_daily_return, portfolio, equalWeight_returns, all_st
 
     fig.show()
 
-
 def cumulativeReturnPlot_ETF(all_stock, all_debt, all_reit):
     stock_cumpod =(all_stock+1).cumprod()-1
     debt_cumpod =(all_debt+1).cumprod()-1
@@ -204,7 +193,7 @@ def cumulativeReturnPlot_ETF(all_stock, all_debt, all_reit):
             traceorder="normal",
             font=dict(
                 family="sans-serif",
-                size=15,
+                size=10,
                 color="black"
             ),
             bgcolor="White",
@@ -228,7 +217,7 @@ def cumulativeReturnPlot_ETF(all_stock, all_debt, all_reit):
     xaxis={'type': 'date', 
         'tick0': time_ind[0], 
             'tickmode': 'linear', 
-        'dtick': 86400000.0 *300}
+        'dtick': 86400000.0 *80}
 
     )
     fig.update_xaxes(showline=True,linecolor='black',showgrid=True, gridwidth=1, gridcolor='LightSteelBlue',mirror=True)
@@ -243,6 +232,56 @@ def closePlot_ETF(all_stock, all_debt, all_reit):
     trace1_portfolio = go.Scatter(x = time_ind, y = all_debt.close, mode = 'lines', name = 'debt ETF')
     trace2_portfolio = go.Scatter(x = time_ind, y = all_reit.close, mode = 'lines', name = 'reit ETF')
     
+    fig = go.Figure()
+    fig.add_trace(trace0_portfolio)
+    fig.add_trace(trace1_portfolio)
+    fig.add_trace(trace2_portfolio)
+    fig.update_layout(
+        legend=dict(
+            x=0,
+            y=1,
+            traceorder="normal",
+            font=dict(
+                family="sans-serif",
+                size=10,
+                color="black"
+            ),
+            bgcolor="White",
+            bordercolor="white",
+            borderwidth=2
+            
+        ),
+    )
+    fig.update_layout(title={
+            #'text': "Cumulative Return using FinRL",
+            'y':0.85,
+            'x':0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'})
+    #with Transaction cost
+    fig.update_layout(
+        paper_bgcolor='rgba(1,1,0,0)',
+        plot_bgcolor='rgba(1, 1, 0, 0)',
+        #xaxis_title="Date",
+        yaxis_title="Close Price",
+    xaxis={'type': 'date',
+        'tick0': time_ind[0],
+            'tickmode': 'linear',
+        'dtick': 86400000.0 *350}
+
+    )
+    fig.update_xaxes(showline=True,linecolor='black',showgrid=True, gridwidth=1, gridcolor='LightSteelBlue',mirror=True)
+    fig.update_yaxes(showline=True,linecolor='black',showgrid=True, gridwidth=1, gridcolor='LightSteelBlue',mirror=True)
+    fig.update_yaxes(zeroline=True, zerolinewidth=1, zerolinecolor='LightSteelBlue')
+
+    fig.show()
+
+def weightTrend_plot(df_actions):
+    time_ind = df_actions.reset_index().date
+    trace0_portfolio = go.Scatter(x = time_ind, y = df_actions.VTI, mode = 'lines', name = 'stock ETF')
+    trace1_portfolio = go.Scatter(x = time_ind, y = df_actions.TLT, mode = 'lines', name = 'debt ETF')
+    trace2_portfolio = go.Scatter(x = time_ind, y = df_actions.VNQ, mode = 'lines', name = 'reit ETF')
+
     fig = go.Figure()
     fig.add_trace(trace0_portfolio)
     fig.add_trace(trace1_portfolio)
@@ -274,12 +313,11 @@ def closePlot_ETF(all_stock, all_debt, all_reit):
         paper_bgcolor='rgba(1,1,0,0)',
         plot_bgcolor='rgba(1, 1, 0, 0)',
         #xaxis_title="Date",
-        yaxis_title="Close Price",
+        yaxis_title="weight",
     xaxis={'type': 'date', 
         'tick0': time_ind[0], 
             'tickmode': 'linear', 
-        'dtick': 86400000.0 *300}
-
+        'dtick': 86400000.0 *80}
     )
     fig.update_xaxes(showline=True,linecolor='black',showgrid=True, gridwidth=1, gridcolor='LightSteelBlue',mirror=True)
     fig.update_yaxes(showline=True,linecolor='black',showgrid=True, gridwidth=1, gridcolor='LightSteelBlue',mirror=True)

@@ -1,5 +1,6 @@
 # common library
 import imp
+from random import seed
 import time
 
 import numpy as np
@@ -95,7 +96,7 @@ class DRLAgent:
             tensorboard_log=f"{config.TENSORBOARD_PATH}/{model_name}",
             verbose=verbose,
             policy_kwargs=policy_kwargs,
-            seed=seed,
+            # seed=seed,
             **model_kwargs,
         )
         return model
@@ -104,7 +105,7 @@ class DRLAgent:
         model = model.learn(
             total_timesteps=total_timesteps,
             tb_log_name=tb_log_name,
-            callback=TensorboardCallback(),
+            callback=TensorboardCallback()
         )
         return model
 

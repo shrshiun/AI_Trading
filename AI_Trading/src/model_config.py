@@ -1,5 +1,8 @@
 # Model Parameters
-A2C_PARAMS = {"n_steps": 5, "ent_coef": 0.01, "learning_rate": 0.0007}
+from random import seed
+
+
+A2C_PARAMS = {"n_steps": 5, "ent_coef": 0.01, "learning_rate": 0.0007, "seed": 0}
 PPO_PARAMS = {
     "n_steps": 2048,
     "ent_coef": 0.01,
@@ -29,4 +32,4 @@ ERL_PARAMS = {
     "eval_gap": 30,
 }
 RLlib_PARAMS = {"lr": 5e-5, "train_batch_size": 500, "gamma": 0.99}
-TOTAL_TIMESTEPS = 50000
+TOTAL_TIMESTEPS = 500000
