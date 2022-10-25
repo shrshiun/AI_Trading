@@ -1,12 +1,10 @@
 from AI_Trading.src.stablebaselines3_models import DRLAgent as DRLAgent_sb3
 from AI_Trading.src import config
 from AI_Trading.src import model_config
-from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.logger import configure
 import os
 
 def trainPortfolioAllocation(exp, env_train, model_name, model_index):
-    env_train = Monitor(env_train,filename=f'{config.LOG_PATH}a2c_{model_index}')
     env_train, _ = env_train.get_sb_env()
     agent = DRLAgent_sb3(env = env_train)
     save_path = os.path.join(config.TRAINED_MODEL_PATH, exp)

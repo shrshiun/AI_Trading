@@ -8,6 +8,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from stable_baselines3.common.vec_env import DummyVecEnv
 from AI_Trading.src import config
+import empyrical as ep
+import os.path
 
 class portfolioAllocationEnv(gym.Env):
     """A single stock trading environment for OpenAI gym
@@ -61,6 +63,8 @@ class portfolioAllocationEnv(gym.Env):
 
     def __init__(self, 
                 df,
+                is_test_set,
+                training_log_path,
                 stock_dim,
                 hmax,
                 initial_amount,
@@ -72,8 +76,6 @@ class portfolioAllocationEnv(gym.Env):
                 turbulence_threshold=None,
                 lookback=252,
                 day = 0):
-        #super(StockEnv, self).__init__()
-        #money = 10 , scope = 1
         self.day = day
         self.lookback=lookback
         self.df = df
@@ -88,7 +90,6 @@ class portfolioAllocationEnv(gym.Env):
 
         # action_space normalization and shape is self.stock_dim
         self.action_space = spaces.Box(low = 0, high = 1,shape = (self.action_space,)) 
-        # Shape = (34, 30)
         # covariance matrix + technical indicators
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape = (self.state_space+len(self.tech_indicator_list),self.state_space))
 
@@ -98,7 +99,6 @@ class portfolioAllocationEnv(gym.Env):
         self.state =  np.append(np.array(self.covs), [self.data[tech].values.tolist() for tech in self.tech_indicator_list ], axis=0)
         self.terminal = False     
         self.turbulence_threshold = turbulence_threshold        
-        # initalize state: inital portfolio return + individual stock return + individual weights
         self.portfolio_value = self.initial_amount
 
         # memorize portfolio value each step
@@ -107,11 +107,12 @@ class portfolioAllocationEnv(gym.Env):
         self.portfolio_return_memory = [0]
         self.actions_memory=[[1/self.stock_dim]*self.stock_dim]
         self.date_memory=[self.data.date.unique()[0]]
+
+        self.is_test_set = is_test_set
+        self.training_log_path = training_log_path
         
     def step(self, actions):
-        # print(self.day)
         self.terminal = self.day >= len(self.df.index.unique())-1
-        # print(actions)
 
         if self.terminal:
             df = pd.DataFrame(self.portfolio_return_memory)
@@ -130,24 +131,32 @@ class portfolioAllocationEnv(gym.Env):
 
             df_daily_return = pd.DataFrame(self.portfolio_return_memory)
             df_daily_return.columns = ['daily_return']
+
             if df_daily_return['daily_return'].std() !=0:
               sharpe = (252**0.5)*df_daily_return['daily_return'].mean()/ \
                        df_daily_return['daily_return'].std()
               print("Sharpe: ",sharpe)
             print("=================================")
-            
-            return self.state, self.reward, self.terminal,{}
+            mdd = ep.max_drawdown(pd.Series(self.portfolio_return_memory))
+            sortino = ep.sortino_ratio(pd.Series(self.portfolio_return_memory))
+
+            if self.is_test_set == False:
+                if os.path.exists(self.training_log_path):
+                    df_traing_log = pd.read_csv(self.training_log_path)
+                    df_traing_log.loc[len(df_traing_log)] = [self.portfolio_value, self.reward, mdd, sharpe, sortino]
+                    df_traing_log.to_csv(self.training_log_path, index= False)
+                else:
+                    df_traing_log = pd.DataFrame({'portfolio value':[self.portfolio_value],
+                                                  'reward':[self.reward],
+                                                  'mdd': [mdd],
+                                                  'sharpe': [sharpe],
+                                                  'sortino': [sortino]})
+                    df_traing_log.to_csv(self.training_log_path, index= False)
+
+            return self.state, self.reward, self.terminal, {}
 
         else:
-            #print("Model actions: ",actions)
-            # actions are the portfolio weight
-            # normalize to sum of 1
-            #if (np.array(actions) - np.array(actions).min()).sum() != 0:
-            #  norm_actions = (np.array(actions) - np.array(actions).min()) / (np.array(actions) - np.array(actions).min()).sum()
-            #else:
-            #  norm_actions = actions
             weights = self.softmax_normalization(actions) 
-            #print("Normalized actions: ", weights)
             self.actions_memory.append(weights)
             last_day_memory = self.data
 
@@ -156,7 +165,6 @@ class portfolioAllocationEnv(gym.Env):
             self.data = self.df.loc[self.day,:]
             self.covs = self.data['cov_list'].values[0]
             self.state =  np.append(np.array(self.covs), [self.data[tech].values.tolist() for tech in self.tech_indicator_list ], axis=0)
-            #print(self.state)
             # calcualte portfolio return
             # individual stocks' return * weight
             portfolio_return = sum(((self.data.close.values / last_day_memory.close.values)-1)*weights)
@@ -170,9 +178,7 @@ class portfolioAllocationEnv(gym.Env):
             self.asset_memory.append(new_portfolio_value)
 
             # the reward is the new portfolio value or end portfolo value
-            self.reward = new_portfolio_value 
-            #print("Step reward: ", self.reward)
-            #self.reward = self.reward*self.reward_scaling
+            self.reward = new_portfolio_value
 
         return self.state, self.reward, self.terminal, {}
 
@@ -190,6 +196,7 @@ class portfolioAllocationEnv(gym.Env):
         self.portfolio_return_memory = [0]
         self.actions_memory=[[1/self.stock_dim]*self.stock_dim]
         self.date_memory=[self.data.date.unique()[0]] 
+
         return self.state
     
     def render(self, mode='human'):
@@ -205,16 +212,12 @@ class portfolioAllocationEnv(gym.Env):
     def save_asset_memory(self):
         date_list = self.date_memory
         portfolio_return = self.portfolio_return_memory
-        #print(len(date_list))
-        #print(len(asset_list))
         df_account_value = pd.DataFrame({'date':date_list,'daily_return':portfolio_return})
         return df_account_value
 
     def save_portfolio_memory(self):
         date_list = self.date_memory
         portfolio_value = self.asset_memory
-        #print(len(date_list))
-        #print(len(asset_list))
         df_portfolio_value = pd.DataFrame({'date':date_list,'portfolio_value':portfolio_value})
         return df_portfolio_value
 
@@ -228,7 +231,6 @@ class portfolioAllocationEnv(gym.Env):
         df_actions = pd.DataFrame(action_list)
         df_actions.columns = self.data.tic.values
         df_actions.index = df_date.date
-        #df_actions = pd.DataFrame({'date':date_list,'actions':action_list})
         return df_actions
 
     def _seed(self, seed=None):

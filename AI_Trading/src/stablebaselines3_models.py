@@ -93,7 +93,7 @@ class DRLAgent:
         model = MODELS[model_name](
             policy=policy,
             env=self.env,
-            tensorboard_log=f"{config.TENSORBOARD_PATH}/{model_name}",
+            tensorboard_log=f"{config.TENSORBOARD_PATH}{model_name}",
             verbose=verbose,
             policy_kwargs=policy_kwargs,
             # seed=seed,
