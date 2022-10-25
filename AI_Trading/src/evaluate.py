@@ -30,7 +30,7 @@ def computeReturns(actions, trade):
             portfolio_value.append(new_portfolio_value[0])
     df_portfolio_value = pd.DataFrame({'date': all_date, 'portfolio_value':portfolio_value})
     returns = get_daily_return(df_portfolio_value, value_col_name='portfolio_value')
-    df_returns = returns.to_frame()
+    df_returns = returns.to_frame().reset_index()
     df_returns['date'] = all_date
     return df_returns, df_portfolio_value
 
