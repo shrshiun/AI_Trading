@@ -104,21 +104,21 @@ def getMinVariance(trade):
     stats = perf_func(returns=portfolio['daily_return'], 
                         factor_returns = portfolio['daily_return'], 
                         positions=None, transactions=None, turnover_denom="AGB")
-    return portfolio, stats
+    return portfolio['daily_return'], stats
 
 def backtestPlot(DRL_df, baseline_returns):
     with pyfolio.plotting.plotting_context(font_scale=1.1):
         pyfolio.create_full_tear_sheet(returns = DRL_df,
                                         benchmark_rets=baseline_returns, set_context=False)
 
-def cumulativeReturnPlot(df_daily_return, portfolio, equalWeight_returns, all_stock, all_debt, all_reit):
-    a2c_cumpod =(df_daily_return.daily_return+1).cumprod()-1
-    min_var_cumpod =(portfolio.daily_return + 1).cumprod()-1
-    equal_cumpod =(equalWeight_returns+1).cumprod()-1
+def cumulativeReturnPlot(DRL_returns, equalWeight_returns, minVariance_returns, all_stock, all_debt, all_reit):
+    a2c_cumpod =(DRL_returns+ 1).cumprod()-1
+    equal_cumpod =(equalWeight_returns+ 1).cumprod()-1
+    min_var_cumpod =(minVariance_returns+ 1).cumprod()-1
     stock_cumpod =(all_stock+1).cumprod()-1
     debt_cumpod =(all_debt+1).cumprod()-1
     reit_cumpod =(all_reit+1).cumprod()-1
-    time_ind = pd.Series(df_daily_return.date)
+    time_ind = pd.Series(DRL_returns.to_frame().index)
     trace0_portfolio = go.Scatter(x = time_ind, y = a2c_cumpod, mode = 'lines', name = 'A2C (Portfolio Allocation)')
     trace1_portfolio = go.Scatter(x = time_ind, y = equal_cumpod, mode = 'lines', name = 'Equal Weight')
     trace2_portfolio = go.Scatter(x = time_ind, y = min_var_cumpod, mode = 'lines', name = 'Min-Variance')
@@ -324,3 +324,20 @@ def weightTrend_plot(df_actions):
     fig.update_yaxes(zeroline=True, zerolinewidth=1, zerolinecolor='LightSteelBlue')
 
     fig.show()
+
+def rankCaculate(index, statIndex, df_stats, df_stats_allYear):
+    df_stats = df_stats.T
+    df_stats['rank'] = df_stats[str(statIndex)].rank(ascending=False)
+    rank = df_stats['rank'].to_frame()
+    df_stats_allYear = df_stats_allYear.append(rank.rename(columns = {'rank':str(index)}).T)
+    return df_stats_allYear
+
+def stats_allYear (index, statIndex, df_stats, df_stats_allYear):
+    stats = df_stats[df_stats.index == str(statIndex)].rename(index={str(statIndex):str(index)})
+    df_stats_allYear = df_stats_allYear.append(stats)
+    return df_stats_allYear
+
+def average_allYear(df_stats_allYear):
+    df_stats_allYear = df_stats_allYear.T
+    df_stats_allYear['Avg'] = df_stats_allYear.mean(axis=1)
+    return df_stats_allYear
