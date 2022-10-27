@@ -6,6 +6,15 @@ import os
 import pandas as pd
 from AI_Trading.src import config
 
+def create_dir():
+    dir_list = [config.TENSORBOARD_PATH, config.LOG_PATH, config.RESULTS_DIR, config.TRAINED_MODEL_PATH]
+    for path in dir_list:
+        if not os.path.isdir(path):
+            try:
+                os.mkdir(path)
+            except Exception:
+                print(f'no folder {path}')
+                pass
 
 def load_data(filePath, name):
     data = pd.read_csv(filePath)

@@ -117,13 +117,13 @@ class portfolioAllocationEnv(gym.Env):
         if self.terminal:
             df = pd.DataFrame(self.portfolio_return_memory)
             df.columns = ['daily_return']
-            plt.plot(df.daily_return.cumsum(),'r')
-            plt.savefig(config.RESULTS_DIR + 'cumulative_reward.png')
-            plt.close()
+            # plt.plot(df.daily_return.cumsum(),'r')
+            # plt.savefig(config.RESULTS_DIR + 'cumulative_reward.png')
+            # plt.close()
             
-            plt.plot(self.portfolio_return_memory,'r')
-            plt.savefig(config.RESULTS_DIR + 'rewards.png')
-            plt.close()
+            # plt.plot(self.portfolio_return_memory,'r')
+            # plt.savefig(config.RESULTS_DIR + 'rewards.png')
+            # plt.close()
 
             print("=================================")
             print("begin_total_asset:{}".format(self.asset_memory[0]))           
