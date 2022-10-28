@@ -26,7 +26,7 @@ def computeReturns(actions, trade):
                 close_lastDay = trade['close'].loc[(trade['date']==all_date[index-1]) & (trade['tic'] == tic)].values
                 weight = actions[str(tic)].loc[actions['date']==day].values
                 portfolio_return += (((close_today / close_lastDay)-1)*weight)
-                new_portfolio_value = portfolio_value[index-1]*(1+portfolio_return)
+            new_portfolio_value = portfolio_value[index-1]*(1+portfolio_return)
             portfolio_value.append(new_portfolio_value[0])
     df_portfolio_value = pd.DataFrame({'date': all_date, 'portfolio_value':portfolio_value})
     returns = get_daily_return(df_portfolio_value, value_col_name='portfolio_value')
