@@ -327,7 +327,7 @@ def weightTrend_plot(df_actions):
 
 def rankCaculate(index, statIndex, df_stats, df_stats_allYear):
     df_stats = df_stats.T
-    df_stats['rank'] = df_stats[str(statIndex)].rank(ascending=False)
+    df_stats['rank'] = df_stats[str(statIndex)].rank(ascending=False).astype(int)
     rank = df_stats['rank'].to_frame()
     df_stats_allYear = df_stats_allYear.append(rank.rename(columns = {'rank':str(index)}).T)
     return df_stats_allYear
@@ -340,4 +340,4 @@ def stats_allYear (index, statIndex, df_stats, df_stats_allYear):
 def average_allYear(df_stats_allYear):
     df_stats_allYear = df_stats_allYear.T
     df_stats_allYear['Avg'] = df_stats_allYear.mean(axis=1)
-    return df_stats_allYear
+    return df_stats_allYear.T

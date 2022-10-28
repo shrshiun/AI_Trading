@@ -3,6 +3,7 @@ TENSORBOARD_PATH= "./AI_Trading/tensorboard/"
 LOG_PATH = "./AI_Trading/log/"
 RESULTS_DIR = "./AI_Trading/results/"
 TRAINED_MODEL_PATH = './AI_Trading/trained_models/'
+EVALUATE_RESULT_PATH = './AI_Trading/evaluate_result/'
 
 # data :2004-09-28 ~ 2022-08-30
 ## date format: '%Y-%m-%d'
