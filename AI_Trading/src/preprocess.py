@@ -56,7 +56,8 @@ def covarianceMatrix(df):
     return df
 
 def preprocess(trainStart, trainEnd, testStart, testEnd):
-    # create_folder()
+    trainEnd = str((datetime.strptime(trainEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
+    testEnd = str((datetime.strptime(testEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
     data1 = featureEngineering(load_data(config.VTI, 'VTI'))
     data2 = featureEngineering(load_data(config.VNQ, 'VNQ'))
     data3 = featureEngineering(load_data(config.TLT, 'TLT'))
