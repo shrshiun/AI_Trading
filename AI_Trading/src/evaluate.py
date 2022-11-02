@@ -1,3 +1,4 @@
+from turtle import window_height
 from pyfolio import timeseries
 import pyfolio
 from finrl.plot import backtest_stats, convert_daily_return_to_pyfolio_ts, get_daily_return
@@ -11,23 +12,35 @@ import plotly.graph_objs as go
 from pypfopt.efficient_frontier import EfficientFrontier
 from AI_Trading.src import config
 
-def computeReturns(actions, trade):
+def computeReturns(actions, trade, transCostRate = 0):
     all_date = trade.date.unique().tolist()
     all_tic = trade.tic.unique().tolist()
     actions = actions.reset_index()
     portfolio_value = []
+    share_yesterday = []
+    trans_cost = 0
     for index,day in enumerate(all_date):
         if index == 0:
             portfolio_value.append(config.INITIAL_AMOUNT)
+            share_yesterday = [[0]] * len(all_tic)
         else:
-            portfolio_return = 0
+            close_today = []
+            close_yesterday = []
+            weight = []
             for tic in all_tic:
-                close_today = trade['close'].loc[(trade['date']==day) & (trade['tic'] == tic)].values
-                close_lastDay = trade['close'].loc[(trade['date']==all_date[index-1]) & (trade['tic'] == tic)].values
-                weight = actions[str(tic)].loc[actions['date']==day].values
-                portfolio_return += (((close_today / close_lastDay)-1)*weight)
-            new_portfolio_value = portfolio_value[index-1]*(1+portfolio_return)
+                close_today.append(trade['close'].loc[(trade['date']==day) & (trade['tic'] == tic)].values)
+                close_yesterday.append(trade['close'].loc[(trade['date']==all_date[index-1]) & (trade['tic'] == tic)].values)
+                weight.append(actions[str(tic)].loc[actions['date']==all_date[index]].values)
+            share = np.floor(np.array(weight) * np.array(portfolio_value[index-1]) / np.array(close_yesterday))
+            cash = portfolio_value[index-1] - sum(share * close_yesterday)
+
+            if transCostRate > 0:
+                share_change = np.sum(abs(np.array(share) - np.array(share_yesterday)) * np.array(close_yesterday))
+                trans_cost = share_change * transCostRate
+
+            new_portfolio_value = sum(share * close_today) + cash - trans_cost
             portfolio_value.append(new_portfolio_value[0])
+            share_yesterday = share
     df_portfolio_value = pd.DataFrame({'date': all_date, 'portfolio_value':portfolio_value})
     returns = get_daily_return(df_portfolio_value, value_col_name='portfolio_value')
     df_returns = returns.to_frame().reset_index()
