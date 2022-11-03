@@ -62,7 +62,7 @@ def getEqualWeightActions(trade):
     equalWeightActions_df = pd.DataFrame({'date':all_date})
     for tic in tics:
         equalWeightActions_df[tic] = [1/ticNums] * len(all_date)
-    equalWeightActions_df.set_index('date')
+    equalWeightActions_df = equalWeightActions_df.set_index('date')
     return equalWeightActions_df
 
 def getTicActions(trade, tic):
@@ -74,17 +74,18 @@ def getTicActions(trade, tic):
             ticActions_df[t] = [1] * len(all_date)
         else:
             ticActions_df[t] = [0] * len(all_date)
-    ticActions_df.set_index('date')
+    ticActions_df = ticActions_df.set_index('date')
     return ticActions_df
 
-def getMinVariance(trade):
+def getMinVarianceActions(trade):
     unique_tic = trade.tic.unique()
     unique_trade_date = trade.date.unique()
     #calculate_portfolio_minimum_variance
-    portfolio = pd.DataFrame(index = range(1), columns = unique_trade_date)
+    minVarianceActions_df = pd.DataFrame(index = range(1), columns = unique_trade_date)
     initial_capital = config.INITIAL_AMOUNT
-    portfolio.loc[0,unique_trade_date[0]] = initial_capital
-
+    minVarianceActions_df.loc[0,unique_trade_date[0]] = initial_capital
+    for t in range(len(unique_tic)):
+        minVarianceActions_df.loc[t+1,unique_trade_date[0]] = 1 / len(unique_tic) # initial weight
     for i in range(len(unique_trade_date)-1):
         df_temp = trade[trade.date==unique_trade_date[i]].reset_index(drop=True)
         df_temp_next = trade[trade.date==unique_trade_date[i+1]].reset_index(drop=True)
@@ -92,14 +93,13 @@ def getMinVariance(trade):
         #calculate covariance matrix
         Sigma = df_temp.return_list[0].cov()
         #portfolio allocation
-        ef_min_var = EfficientFrontier(None, Sigma,weight_bounds=(-1, 1))
+        ef_min_var = EfficientFrontier(None, Sigma,weight_bounds=(0, 1))
         #minimum variance
         raw_weights_min_var = ef_min_var.min_volatility()
         #get weights
         cleaned_weights_min_var = ef_min_var.clean_weights()
-        
         #current capital
-        cap = portfolio.iloc[0, i]
+        cap = minVarianceActions_df.iloc[0, i]
         #current cash invested for each stock
         current_cash = [element * cap for element in list(cleaned_weights_min_var.values())]
         # current held shares
@@ -108,16 +108,17 @@ def getMinVariance(trade):
         # next time period price
         next_price = np.array(df_temp_next.close)
         ##next_price * current share to calculate next total account value 
-        portfolio.iloc[0, i+1] = np.dot(current_shares, next_price)
-        
-    portfolio=portfolio.T.reset_index()
-    portfolio.columns = ['date', 'account_value']
-    portfolio['daily_return'] = portfolio.account_value.pct_change()
-    perf_func = timeseries.perf_stats 
-    stats = perf_func(returns=portfolio['daily_return'], 
-                        factor_returns = portfolio['daily_return'], 
-                        positions=None, transactions=None, turnover_denom="AGB")
-    return portfolio['daily_return'], stats
+        minVarianceActions_df.iloc[0, i+1] = np.dot(current_shares, next_price)
+        for j in range(len(unique_tic)):
+            minVarianceActions_df.iloc[j+1, i+1] = list(cleaned_weights_min_var.values())[j]
+
+    minVarianceActions_df = minVarianceActions_df.T.reset_index()
+    colunn = ['date', 'portfolio_value']
+    colunn.extend(list(unique_tic))
+    minVarianceActions_df.columns = colunn
+    minVarianceActions_df = minVarianceActions_df.drop(columns=['portfolio_value'])
+    minVarianceActions_df = minVarianceActions_df.set_index('date')
+    return minVarianceActions_df
 
 def backtestPlot(DRL_df, baseline_returns):
     with pyfolio.plotting.plotting_context(font_scale=1.1):
