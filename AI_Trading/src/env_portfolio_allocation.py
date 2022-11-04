@@ -104,13 +104,16 @@ class portfolioAllocationEnv(gym.Env):
         # memorize portfolio value each step
         self.asset_memory = [self.initial_amount]
         # memorize portfolio return each step
+        self.portfolio_return = 0
         self.portfolio_return_memory = [0]
         self.actions_memory=[[1/self.stock_dim]*self.stock_dim]
+        self.share_memory = [[0]*self.stock_dim]
         self.date_memory=[self.data.date.unique()[0]]
 
         self.is_test_set = is_test_set
         self.training_log_path = training_log_path
         
+
     def step(self, actions):
         self.terminal = self.day >= len(self.df.index.unique())-1
 
@@ -159,19 +162,26 @@ class portfolioAllocationEnv(gym.Env):
             self.state =  np.append(np.array(self.covs), [self.data[tech].values.tolist() for tech in self.tech_indicator_list ], axis=0)
             # calcualte portfolio return
             # individual stocks' return * weight
-            portfolio_return = sum(((self.data.close.values / last_day_memory.close.values)-1)*weights)
+            share = np.floor(weights * self.portfolio_value / last_day_memory.close.values)
+            self.share_memory.append(share)
+            cash = self.portfolio_value - sum(share * last_day_memory.close.values)
+
+            if self.transaction_cost_pct > 0:
+                share_change = np.sum(abs(np.array(share) - np.array(self.share_memory[self.day-1])) * np.array(last_day_memory.close.values))
+                trans_cost = share_change * self.transaction_cost_pct
+
             # update portfolio value
-            new_portfolio_value = self.portfolio_value*(1+portfolio_return)
+            new_portfolio_value = sum(share * self.data.close.values) + cash - trans_cost
+            self.portfolio_return = (new_portfolio_value / self.portfolio_value)-1
             self.portfolio_value = new_portfolio_value
 
             # save into memory
-            self.portfolio_return_memory.append(portfolio_return)
+            self.portfolio_return_memory.append(self.portfolio_return)
             self.date_memory.append(self.data.date.unique()[0])            
             self.asset_memory.append(new_portfolio_value)
 
             # the reward is the new portfolio value or end portfolo value
             self.reward = new_portfolio_value
-
         return self.state, self.reward, self.terminal, {}
 
     def reset(self):
