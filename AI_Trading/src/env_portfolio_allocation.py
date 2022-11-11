@@ -65,6 +65,7 @@ class portfolioAllocationEnv(gym.Env):
                 df,
                 is_test_set,
                 training_log_path,
+                training_weight_path,
                 stock_dim,
                 hmax,
                 initial_amount,
@@ -112,6 +113,7 @@ class portfolioAllocationEnv(gym.Env):
 
         self.is_test_set = is_test_set
         self.training_log_path = training_log_path
+        self.training_weight_path = training_weight_path
         
 
     def step(self, actions):

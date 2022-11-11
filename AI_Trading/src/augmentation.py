@@ -265,20 +265,26 @@ class maxPortfolioReturnEnv(portfolioAllocationEnv):
                        df_daily_return['daily_return'].std()
               print("Sharpe: ",sharpe)
             print("=================================")
+            returns = (self.portfolio_value/self.asset_memory[0]-1)*100
             mdd = ep.max_drawdown(pd.Series(self.portfolio_return_memory))
             sortino = ep.sortino_ratio(pd.Series(self.portfolio_return_memory))
-
+            calmar = ep.calmar_ratio(pd.Series(self.portfolio_return_memory))
             if self.is_test_set == False:
+                df_training_weight = pd.DataFrame(self.actions_memory,columns =['TLT', 'VNQ', 'VTI'])
+                df_training_weight['date'] = self.date_memory
+                df_training_weight = df_training_weight.set_index('date')
+                df_training_weight.to_csv(self.training_weight_path)
                 if os.path.exists(self.training_log_path):
                     df_traing_log = pd.read_csv(self.training_log_path)
-                    df_traing_log.loc[len(df_traing_log)] = [self.portfolio_value, self.reward, mdd, sharpe, sortino]
+                    df_traing_log.loc[len(df_traing_log)] = [self.portfolio_value, returns, mdd, sharpe, sortino]
                     df_traing_log.to_csv(self.training_log_path, index= False)
                 else:
                     df_traing_log = pd.DataFrame({'portfolio value':[self.portfolio_value],
-                                                  'reward':[self.reward],
+                                                  'reward':[returns],
                                                   'mdd': [mdd],
                                                   'sharpe': [sharpe],
-                                                  'sortino': [sortino]})
+                                                  'sortino': [sortino],
+                                                  'calmar':[calmar]})
                     df_traing_log.to_csv(self.training_log_path, index= False)
 
             return self.state, self.reward, self.terminal, {}
@@ -313,5 +319,5 @@ class maxPortfolioReturnEnv(portfolioAllocationEnv):
             self.date_memory.append(self.data.date.unique()[0])            
             self.asset_memory.append(new_portfolio_value)
 
-            self.reward = self.portfolio_return*100 if self.portfolio_return  != 0 else 1
+            self.reward = self.portfolio_return*100
         return self.state, self.reward, self.terminal, {}
