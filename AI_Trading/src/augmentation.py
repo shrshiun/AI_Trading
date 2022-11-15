@@ -23,28 +23,34 @@ class minReturnConcernEnv(portfolioAllocationEnv):
             df_daily_return.columns = ['daily_return']
 
             if df_daily_return['daily_return'].std() !=0:
-              sharpe = (252**0.5)*df_daily_return['daily_return'].mean()/ \
-                       df_daily_return['daily_return'].std()
-              print("Sharpe: ",sharpe)
+                sharpe = (252**0.5)*df_daily_return['daily_return'].mean()/ \
+                        df_daily_return['daily_return'].std()
+                print("Sharpe: ",sharpe)
             print("=================================")
+
             mdd = ep.max_drawdown(pd.Series(self.portfolio_return_memory))
             sortino = ep.sortino_ratio(pd.Series(self.portfolio_return_memory))
-
+            calmar = ep.calmar_ratio(pd.Series(self.portfolio_return_memory))
+            reward = self.portfolio_value * min(self.portfolio_return_memory)
             if self.is_test_set == False:
+                df_training_weight = pd.DataFrame(self.actions_memory,columns =self.data.tic.values)
+                df_training_weight['date'] = self.date_memory
+                df_training_weight = df_training_weight.set_index('date')
+                df_training_weight.to_csv(self.training_weight_path)
                 if os.path.exists(self.training_log_path):
                     df_traing_log = pd.read_csv(self.training_log_path)
-                    df_traing_log.loc[len(df_traing_log)] = [self.portfolio_value, self.reward, mdd, sharpe, sortino]
+                    df_traing_log.loc[len(df_traing_log)] = [self.portfolio_value, reward, mdd, sharpe, sortino, calmar]
                     df_traing_log.to_csv(self.training_log_path, index= False)
                 else:
                     df_traing_log = pd.DataFrame({'portfolio value':[self.portfolio_value],
-                                                  'reward':[self.reward],
-                                                  'mdd': [mdd],
-                                                  'sharpe': [sharpe],
-                                                  'sortino': [sortino]})
+                                                    'reward':[reward],
+                                                    'mdd': [mdd],
+                                                    'sharpe': [sharpe],
+                                                    'sortino': [sortino],
+                                                    'calmar':[calmar]})
                     df_traing_log.to_csv(self.training_log_path, index= False)
 
             return self.state, self.reward, self.terminal, {}
-
         else:
             weights = self.softmax_normalization(actions)
             self.actions_memory.append(weights)
@@ -64,7 +70,8 @@ class minReturnConcernEnv(portfolioAllocationEnv):
             if self.transaction_cost_pct > 0:
                 share_change = np.sum(abs(np.array(share) - np.array(self.share_memory[self.day-1])) * np.array(last_day_memory.close.values))
                 trans_cost = share_change * self.transaction_cost_pct
-
+            else:
+                trans_cost = 0
             # update portfolio value
             new_portfolio_value = sum(share * self.data.close.values) + cash - trans_cost
             self.portfolio_return = (new_portfolio_value / self.portfolio_value)-1
@@ -75,7 +82,6 @@ class minReturnConcernEnv(portfolioAllocationEnv):
             self.date_memory.append(self.data.date.unique()[0])            
             self.asset_memory.append(new_portfolio_value)
 
-            # the reward is the new portfolio value or end portfolo value
             self.reward = new_portfolio_value * min(self.portfolio_return_memory)
         return self.state, self.reward, self.terminal, {}
 
@@ -84,10 +90,10 @@ class mddConcernEnv(portfolioAllocationEnv):
     # mdd = ep.max_drawdown(pd.Series(self.portfolio_return_memory))
 
     # # the reward is the new portfolio value or end portfolo value
-    # mdd = abs(mdd) if mdd != 0 else 1 # mdd 若為 0 -> 1 ; mdd 小於 0 -> 取絕對值
-    # self.reward = new_portfolio_value / mdd
+    #  mdd = mdd if mdd != 0 else 0.000001 # mdd 若為 0 -> 以 0.000001 代替(避免 divide zero)
+    # self.reward = abs(new_portfolio_value / mdd)
 
-   def step(self, actions):
+    def step(self, actions):
         self.terminal = self.day >= len(self.df.index.unique())-1
 
         if self.terminal:
@@ -101,28 +107,35 @@ class mddConcernEnv(portfolioAllocationEnv):
             df_daily_return.columns = ['daily_return']
 
             if df_daily_return['daily_return'].std() !=0:
-              sharpe = (252**0.5)*df_daily_return['daily_return'].mean()/ \
-                       df_daily_return['daily_return'].std()
-              print("Sharpe: ",sharpe)
+                sharpe = (252**0.5)*df_daily_return['daily_return'].mean()/ \
+                        df_daily_return['daily_return'].std()
+                print("Sharpe: ",sharpe)
             print("=================================")
+
             mdd = ep.max_drawdown(pd.Series(self.portfolio_return_memory))
             sortino = ep.sortino_ratio(pd.Series(self.portfolio_return_memory))
-
+            calmar = ep.calmar_ratio(pd.Series(self.portfolio_return_memory))
+            mdd = mdd if mdd != 0 else 0.000001 # mdd 若為 0 -> 以 0.000001 代替(避免 divide zero)
+            reward = abs(self.portfolio_value / mdd)
             if self.is_test_set == False:
+                df_training_weight = pd.DataFrame(self.actions_memory,columns =self.data.tic.values)
+                df_training_weight['date'] = self.date_memory
+                df_training_weight = df_training_weight.set_index('date')
+                df_training_weight.to_csv(self.training_weight_path)
                 if os.path.exists(self.training_log_path):
                     df_traing_log = pd.read_csv(self.training_log_path)
-                    df_traing_log.loc[len(df_traing_log)] = [self.portfolio_value, self.reward, mdd, sharpe, sortino]
+                    df_traing_log.loc[len(df_traing_log)] = [self.portfolio_value, reward, mdd, sharpe, sortino, calmar]
                     df_traing_log.to_csv(self.training_log_path, index= False)
                 else:
                     df_traing_log = pd.DataFrame({'portfolio value':[self.portfolio_value],
-                                                  'reward':[self.reward],
-                                                  'mdd': [mdd],
-                                                  'sharpe': [sharpe],
-                                                  'sortino': [sortino]})
+                                                    'reward':[reward],
+                                                    'mdd': [mdd],
+                                                    'sharpe': [sharpe],
+                                                    'sortino': [sortino],
+                                                    'calmar':[calmar]})
                     df_traing_log.to_csv(self.training_log_path, index= False)
 
             return self.state, self.reward, self.terminal, {}
-
         else:
             weights = self.softmax_normalization(actions)
             self.actions_memory.append(weights)
@@ -142,7 +155,8 @@ class mddConcernEnv(portfolioAllocationEnv):
             if self.transaction_cost_pct > 0:
                 share_change = np.sum(abs(np.array(share) - np.array(self.share_memory[self.day-1])) * np.array(last_day_memory.close.values))
                 trans_cost = share_change * self.transaction_cost_pct
-
+            else:
+                trans_cost = 0
             # update portfolio value
             new_portfolio_value = sum(share * self.data.close.values) + cash - trans_cost
             self.portfolio_return = (new_portfolio_value / self.portfolio_value)-1
@@ -156,8 +170,8 @@ class mddConcernEnv(portfolioAllocationEnv):
             mdd = ep.max_drawdown(pd.Series(self.portfolio_return_memory))
 
             # the reward is the new portfolio value or end portfolo value
-            mdd = abs(mdd) if mdd != 0 else 1 # mdd 若為 0 -> 1 ; mdd 小於 0 -> 取絕對值
-            self.reward = new_portfolio_value / mdd
+            mdd = mdd if mdd != 0 else 0.000001 # mdd 若為 0 -> 以 0.000001 代替(避免 divide zero)
+            self.reward = abs(new_portfolio_value / mdd)
         return self.state, self.reward, self.terminal, {}
 
 class sharpeConcernEnv(portfolioAllocationEnv):
@@ -184,28 +198,33 @@ class sharpeConcernEnv(portfolioAllocationEnv):
             df_daily_return.columns = ['daily_return']
 
             if df_daily_return['daily_return'].std() !=0:
-              sharpe = (252**0.5)*df_daily_return['daily_return'].mean()/ \
-                       df_daily_return['daily_return'].std()
-              print("Sharpe: ",sharpe)
+                sharpe = (252**0.5)*df_daily_return['daily_return'].mean()/ \
+                        df_daily_return['daily_return'].std()
+                print("Sharpe: ",sharpe)
             print("=================================")
             mdd = ep.max_drawdown(pd.Series(self.portfolio_return_memory))
             sortino = ep.sortino_ratio(pd.Series(self.portfolio_return_memory))
-
+            calmar = ep.calmar_ratio(pd.Series(self.portfolio_return_memory))
+            reward = self.portfolio_value * sharpe
             if self.is_test_set == False:
+                df_training_weight = pd.DataFrame(self.actions_memory,columns =self.data.tic.values)
+                df_training_weight['date'] = self.date_memory
+                df_training_weight = df_training_weight.set_index('date')
+                df_training_weight.to_csv(self.training_weight_path)
                 if os.path.exists(self.training_log_path):
                     df_traing_log = pd.read_csv(self.training_log_path)
-                    df_traing_log.loc[len(df_traing_log)] = [self.portfolio_value, self.reward, mdd, sharpe, sortino]
+                    df_traing_log.loc[len(df_traing_log)] = [self.portfolio_value, reward, mdd, sharpe, sortino, calmar]
                     df_traing_log.to_csv(self.training_log_path, index= False)
                 else:
                     df_traing_log = pd.DataFrame({'portfolio value':[self.portfolio_value],
-                                                  'reward':[self.reward],
-                                                  'mdd': [mdd],
-                                                  'sharpe': [sharpe],
-                                                  'sortino': [sortino]})
+                                                    'reward':[reward],
+                                                    'mdd': [mdd],
+                                                    'sharpe': [sharpe],
+                                                    'sortino': [sortino],
+                                                    'calmar':[calmar]})
                     df_traing_log.to_csv(self.training_log_path, index= False)
 
             return self.state, self.reward, self.terminal, {}
-
         else:
             weights = self.softmax_normalization(actions)
             self.actions_memory.append(weights)
@@ -225,6 +244,8 @@ class sharpeConcernEnv(portfolioAllocationEnv):
             if self.transaction_cost_pct > 0:
                 share_change = np.sum(abs(np.array(share) - np.array(self.share_memory[self.day-1])) * np.array(last_day_memory.close.values))
                 trans_cost = share_change * self.transaction_cost_pct
+            else:
+                trans_cost = 0
 
             # update portfolio value
             new_portfolio_value = sum(share * self.data.close.values) + cash - trans_cost
@@ -254,6 +275,7 @@ class maxPortfolioReturnEnv(portfolioAllocationEnv):
             df = pd.DataFrame(self.portfolio_return_memory)
             df.columns = ['daily_return']
             print("=================================")
+            print(len(self.asset_memory))
             print("begin_total_asset:{}".format(self.asset_memory[0]))           
             print("end_total_asset:{}".format(self.portfolio_value))
 
@@ -265,22 +287,23 @@ class maxPortfolioReturnEnv(portfolioAllocationEnv):
                        df_daily_return['daily_return'].std()
               print("Sharpe: ",sharpe)
             print("=================================")
-            returns = (self.portfolio_value/self.asset_memory[0]-1)*100
             mdd = ep.max_drawdown(pd.Series(self.portfolio_return_memory))
             sortino = ep.sortino_ratio(pd.Series(self.portfolio_return_memory))
             calmar = ep.calmar_ratio(pd.Series(self.portfolio_return_memory))
+            reward = (self.portfolio_value/self.asset_memory[0]-1)*100
             if self.is_test_set == False:
-                df_training_weight = pd.DataFrame(self.actions_memory,columns =['TLT', 'VNQ', 'VTI'])
+                df_training_weight = pd.DataFrame(self.actions_memory,columns =self.data.tic.values)
                 df_training_weight['date'] = self.date_memory
                 df_training_weight = df_training_weight.set_index('date')
                 df_training_weight.to_csv(self.training_weight_path)
+
                 if os.path.exists(self.training_log_path):
                     df_traing_log = pd.read_csv(self.training_log_path)
-                    df_traing_log.loc[len(df_traing_log)] = [self.portfolio_value, returns, mdd, sharpe, sortino]
+                    df_traing_log.loc[len(df_traing_log)] = [self.portfolio_value, reward, mdd, sharpe, sortino, calmar]
                     df_traing_log.to_csv(self.training_log_path, index= False)
                 else:
                     df_traing_log = pd.DataFrame({'portfolio value':[self.portfolio_value],
-                                                  'reward':[returns],
+                                                  'reward':[reward],
                                                   'mdd': [mdd],
                                                   'sharpe': [sharpe],
                                                   'sortino': [sortino],
@@ -288,7 +311,6 @@ class maxPortfolioReturnEnv(portfolioAllocationEnv):
                     df_traing_log.to_csv(self.training_log_path, index= False)
 
             return self.state, self.reward, self.terminal, {}
-
         else:
             weights = self.softmax_normalization(actions)
             self.actions_memory.append(weights)
@@ -308,7 +330,8 @@ class maxPortfolioReturnEnv(portfolioAllocationEnv):
             if self.transaction_cost_pct > 0:
                 share_change = np.sum(abs(np.array(share) - np.array(self.share_memory[self.day-1])) * np.array(last_day_memory.close.values))
                 trans_cost = share_change * self.transaction_cost_pct
-
+            else:
+                trans_cost = 0
             # update portfolio value
             new_portfolio_value = sum(share * self.data.close.values) + cash - trans_cost
             self.portfolio_return = (new_portfolio_value / self.portfolio_value)-1

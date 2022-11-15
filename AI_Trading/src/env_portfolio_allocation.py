@@ -130,28 +130,33 @@ class portfolioAllocationEnv(gym.Env):
             df_daily_return.columns = ['daily_return']
 
             if df_daily_return['daily_return'].std() !=0:
-              sharpe = (252**0.5)*df_daily_return['daily_return'].mean()/ \
-                       df_daily_return['daily_return'].std()
-              print("Sharpe: ",sharpe)
+                sharpe = (252**0.5)*df_daily_return['daily_return'].mean()/ \
+                        df_daily_return['daily_return'].std()
+                print("Sharpe: ",sharpe)
             print("=================================")
             mdd = ep.max_drawdown(pd.Series(self.portfolio_return_memory))
             sortino = ep.sortino_ratio(pd.Series(self.portfolio_return_memory))
-
+            calmar = ep.calmar_ratio(pd.Series(self.portfolio_return_memory))
+            reward = self.portfolio_value
             if self.is_test_set == False:
+                df_training_weight = pd.DataFrame(self.actions_memory,columns =self.data.tic.values)
+                df_training_weight['date'] = self.date_memory
+                df_training_weight = df_training_weight.set_index('date')
+                df_training_weight.to_csv(self.training_weight_path)
                 if os.path.exists(self.training_log_path):
                     df_traing_log = pd.read_csv(self.training_log_path)
-                    df_traing_log.loc[len(df_traing_log)] = [self.portfolio_value, self.reward, mdd, sharpe, sortino]
+                    df_traing_log.loc[len(df_traing_log)] = [self.portfolio_value, reward, mdd, sharpe, sortino, calmar]
                     df_traing_log.to_csv(self.training_log_path, index= False)
                 else:
                     df_traing_log = pd.DataFrame({'portfolio value':[self.portfolio_value],
-                                                  'reward':[self.reward],
-                                                  'mdd': [mdd],
-                                                  'sharpe': [sharpe],
-                                                  'sortino': [sortino]})
+                                                    'reward':[reward],
+                                                    'mdd': [mdd],
+                                                    'sharpe': [sharpe],
+                                                    'sortino': [sortino],
+                                                    'calmar':[calmar]})
                     df_traing_log.to_csv(self.training_log_path, index= False)
 
             return self.state, self.reward, self.terminal, {}
-
         else:
             weights = self.softmax_normalization(actions)
             self.actions_memory.append(weights)
@@ -170,8 +175,10 @@ class portfolioAllocationEnv(gym.Env):
 
             if self.transaction_cost_pct > 0:
                 share_change = np.sum(abs(np.array(share) - np.array(self.share_memory[self.day-1])) * np.array(last_day_memory.close.values))
+                print('share_change:',share_change)
                 trans_cost = share_change * self.transaction_cost_pct
-
+            else:
+                trans_cost = 0
             # update portfolio value
             new_portfolio_value = sum(share * self.data.close.values) + cash - trans_cost
             self.portfolio_return = (new_portfolio_value / self.portfolio_value)-1
@@ -182,8 +189,7 @@ class portfolioAllocationEnv(gym.Env):
             self.date_memory.append(self.data.date.unique()[0])            
             self.asset_memory.append(new_portfolio_value)
 
-            # the reward is the new portfolio value or end portfolo value
-            self.reward = new_portfolio_value
+            self.reward = self.portfolio_return
         return self.state, self.reward, self.terminal, {}
 
     def reset(self):
@@ -199,7 +205,8 @@ class portfolioAllocationEnv(gym.Env):
         self.terminal = False 
         self.portfolio_return_memory = [0]
         self.actions_memory=[[1/self.stock_dim]*self.stock_dim]
-        self.date_memory=[self.data.date.unique()[0]] 
+        self.date_memory=[self.data.date.unique()[0]]
+        self.share_memory=[[0]*self.stock_dim]
 
         return self.state
     
