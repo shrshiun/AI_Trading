@@ -12,13 +12,14 @@ import plotly.graph_objs as go
 from pypfopt.efficient_frontier import EfficientFrontier
 from AI_Trading.src import config
 
-def computeReturns(actions, trade, transCostRate = 0):
+def computeReturns(actions, trade, transCostRate=0, change_threshold=0):
     all_date = trade.date.unique().tolist()
     all_tic = trade.tic.unique().tolist()
     actions = actions.reset_index()
     portfolio_value = []
     share_yesterday = []
     trans_cost = 0
+    change = True # 上一期有無依模型預測變更標的資金權重
     for index,day in enumerate(all_date):
         if index == 0:
             portfolio_value.append(config.INITIAL_AMOUNT)
@@ -27,18 +28,30 @@ def computeReturns(actions, trade, transCostRate = 0):
             close_today = []
             close_yesterday = []
             weight = []
-            for tic in all_tic:
+            weight_change = 0
+            for t,tic in enumerate(all_tic):
                 close_today.append(trade['close'].loc[(trade['date']==day) & (trade['tic'] == tic)].values)
                 close_yesterday.append(trade['close'].loc[(trade['date']==all_date[index-1]) & (trade['tic'] == tic)].values)
+                weight_today = actions[str(tic)].loc[actions['date']==all_date[index]].values
+                if change:
+                    weight_yesterday = actions[str(tic)].loc[actions['date']==all_date[index-1]].values
+                else:
+                    weight_yesterday = np.array(share_yesterday[t]) * np.array(close_yesterday[t]) / np.array(portfolio_value[index-1])
+                weight_change += abs(weight_today - weight_yesterday)
                 weight.append(actions[str(tic)].loc[actions['date']==all_date[index]].values)
-            share = np.floor(np.array(weight) * np.array(portfolio_value[index-1]) / np.array(close_yesterday))
-            cash = portfolio_value[index-1] - sum(share * close_yesterday)
+            if weight_change >= change_threshold:
+                share = np.floor(np.array(weight) * np.array(portfolio_value[index-1]) / np.array(close_yesterday))
+                change = True
+            else:
+                share = share_yesterday
+                change = False
+            cash = portfolio_value[index-1] - sum(np.array(share) * close_yesterday)
 
             if transCostRate > 0:
                 share_change = np.sum(abs(np.array(share) - np.array(share_yesterday)) * np.array(close_yesterday))
                 trans_cost = share_change * transCostRate
 
-            new_portfolio_value = sum(share * close_today) + cash - trans_cost
+            new_portfolio_value = sum(np.array(share) * close_today) + cash - trans_cost
             portfolio_value.append(new_portfolio_value[0])
             share_yesterday = share
     df_portfolio_value = pd.DataFrame({'date': all_date, 'portfolio_value':portfolio_value})
@@ -281,8 +294,7 @@ def closePlot_ETF(all_stock, all_debt, all_reit):
     xaxis={'type': 'date',
         'tick0': time_ind[0],
             'tickmode': 'linear',
-        'dtick': 86400000.0 *350}
-
+        'dtick': 86400000.0 *80}
     )
     fig.update_xaxes(showline=True,linecolor='black',showgrid=True, gridwidth=1, gridcolor='LightSteelBlue',mirror=True)
     fig.update_yaxes(showline=True,linecolor='black',showgrid=True, gridwidth=1, gridcolor='LightSteelBlue',mirror=True)
@@ -352,6 +364,7 @@ def stats_allYear (index, statIndex, df_stats, df_stats_allYear):
     return df_stats_allYear
 
 def average_allYear(df_stats_allYear):
-    df_stats_allYear = df_stats_allYear.T
-    df_stats_allYear['Avg'] = df_stats_allYear.mean(axis=1)
-    return df_stats_allYear.T
+    df_stats_allYear_output = df_stats_allYear.T
+    df_stats_allYear_output['Avg'] = df_stats_allYear.T.mean(axis=1)
+    df_stats_allYear_output['median'] = df_stats_allYear.T.median(axis=1)
+    return df_stats_allYear_output.T
