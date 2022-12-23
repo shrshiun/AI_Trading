@@ -1,5 +1,6 @@
 from finrl.meta.preprocessor.preprocessors import FeatureEngineer, data_split
 from dateutil.relativedelta import relativedelta
+from sklearn.preprocessing import StandardScaler
 from datetime import datetime
 
 import os
@@ -22,13 +23,31 @@ def load_data(filePath, name):
     data['tic'] = name
     return data
 
-def featureEngineering(data):
+def featureEngineering(data,trainStart, trainEnd, testEnd):
     fe = FeatureEngineer(
                     tech_indicator_list=config.INDICATORS,
                     use_technical_indicator=True,
                     use_turbulence=False,
-                    user_defined_feature = False)
+                    user_defined_feature = True)
     data = fe.preprocess_data(data)
+    if 'macd' in data:
+        data.macd = StandardScaler().fit(data[(data.date>=trainStart) & (data.date<trainEnd)].macd.values.reshape(-1,1)).transform(data.macd.values.reshape(-1,1))
+    if 'boll_ub' in data:
+        data.boll_ub = StandardScaler().fit(data[(data.date>=trainStart) & (data.date<trainEnd)].boll_ub.values.reshape(-1,1)).transform(data.boll_ub.values.reshape(-1,1))
+    if 'boll_lb' in data:
+        data.boll_lb = StandardScaler().fit(data[(data.date>=trainStart) & (data.date<trainEnd)].boll_lb.values.reshape(-1,1)).transform(data.boll_lb.values.reshape(-1,1))
+    if 'rsi_30' in data:
+        data.rsi_30 = data.rsi_30/100
+    if 'cci_30' in data:
+        data.cci_30 = StandardScaler().fit(data[(data.date>=trainStart) & (data.date<trainEnd)].cci_30.values.reshape(-1,1)).transform(data.cci_30.values.reshape(-1,1))
+    if 'dx_30' in data:
+        data.dx_30 = StandardScaler().fit(data[(data.date>=trainStart) & (data.date<trainEnd)].dx_30.values.reshape(-1,1)).transform(data.dx_30.values.reshape(-1,1))
+    if 'close_30_sma' in data:
+        data.close_30_sma = StandardScaler().fit(data[(data.date>=trainStart) & (data.date<trainEnd)].close_30_sma.values.reshape(-1,1)).transform(data.close_30_sma.values.reshape(-1,1))
+    if 'close_60_sma' in data:
+        data.close_60_sma = StandardScaler().fit(data[(data.date>=trainStart) & (data.date<trainEnd)].close_60_sma.values.reshape(-1,1)).transform(data.close_60_sma.values.reshape(-1,1))
+
+    data = customized_feature(data, config.ROLLING_N)
     return data
 
 def covarianceMatrix(df):
@@ -58,13 +77,29 @@ def covarianceMatrix(df):
 def preprocess(trainStart, trainEnd, testStart, testEnd):
     trainEnd = str((datetime.strptime(trainEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
     testEnd = str((datetime.strptime(testEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
-    data1 = featureEngineering(load_data(config.VTI, 'VTI'))
-    data2 = featureEngineering(load_data(config.VNQ, 'VNQ'))
-    data3 = featureEngineering(load_data(config.TLT, 'TLT'))
+    data1 = featureEngineering(load_data(config.VTI, 'VTI'),trainStart, trainEnd,testEnd)
+    data2 = featureEngineering(load_data(config.VNQ, 'VNQ'),trainStart, trainEnd,testEnd)
+    data3 = featureEngineering(load_data(config.TLT, 'TLT'),trainStart, trainEnd,testEnd)
     data = pd.concat([data1, data2, data3])
     data_preprocessed = covarianceMatrix(data)
     train = data_split(data_preprocessed, trainStart, trainEnd)
     test = data_split(data_preprocessed, testStart, testEnd)
+    return train,test
+
+def evalPreprocess(trainStart, trainEnd, testStart, testEnd, isChange_test = False):
+    trainEnd = str((datetime.strptime(trainEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
+    testEnd = str((datetime.strptime(testEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
+    data1 = load_data(config.VTI, 'VTI')
+    data2 = load_data(config.VNQ, 'VNQ')
+    data3 = load_data(config.TLT, 'TLT')
+    data = pd.concat([data1, data2, data3])
+    if isChange_test:
+        train = data_split(data, trainStart, trainEnd)
+        test = data_split(data, testStart, testEnd)
+    else:
+        data_preprocessed = covarianceMatrix(data)
+        train = data_split(data_preprocessed, trainStart, trainEnd)
+        test = data_split(data_preprocessed, testStart, testEnd)
     return train,test
 
 def split_train_test_data():
@@ -88,3 +123,16 @@ def split_train_test_data():
         test = data_split(data, str(testStart), str(testEnd))
         train.to_csv(data_path + '/train_' + str(i))
         test.to_csv(data_path + '/test_' + str(i))
+
+def customized_feature(data, rolling_n):
+        """
+        add customize features (return of OHLC & mean of close)
+        :param data: (df) pandas dataframe ; rolling_n:(n) int
+        :return: (df) pandas dataframe
+        """
+        df = data.copy()
+        df["open_daily_return"] = df.open.pct_change(1)
+        df["high_daily_return"] = df.high.pct_change(1)
+        df["low_daily_return"] = df.low.pct_change(1)
+        df['close_mean'] = df.close.rolling(rolling_n).mean()
+        return df
