@@ -2,18 +2,19 @@
 from random import seed
 
 
-A2C_PARAMS = {"n_steps": 5, "ent_coef": 0.01, "learning_rate": 0.0007, "seed": 0}
+A2C_PARAMS = {"n_steps": 5, "ent_coef": 0.01, "learning_rate": 0.0009, "seed": 0}
 PPO_PARAMS = {
     "n_steps": 2048,
     "ent_coef": 0.01,
     "learning_rate": 0.00025,
     "batch_size": 64,
+    "seed": 0
 }
-DDPG_PARAMS = {"batch_size": 128, "buffer_size": 50000, "learning_rate": 0.001}
+DDPG_PARAMS = {"batch_size": 128, "buffer_size": 50000, "learning_rate": 0.0002,"seed": 0}
 TD3_PARAMS = {
     "batch_size": 100,
     "buffer_size": 1000000,
-    "learning_rate": 0.001,
+    "learning_rate": 0.009,
 }
 SAC_PARAMS = {
     "batch_size": 64,
@@ -21,6 +22,7 @@ SAC_PARAMS = {
     "learning_rate": 0.0001,
     "learning_starts": 100,
     "ent_coef": "auto_0.1",
+    "seed": 0
 }
 ERL_PARAMS = {
     "learning_rate": 3e-5,
@@ -32,4 +34,4 @@ ERL_PARAMS = {
     "eval_gap": 30,
 }
 RLlib_PARAMS = {"lr": 5e-5, "train_batch_size": 500, "gamma": 0.99}
-TOTAL_TIMESTEPS = 500000
+TOTAL_TIMESTEPS = 10**6

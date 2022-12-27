@@ -32,6 +32,6 @@ INDICATORS = [
     "close_30_sma",
     "close_60_sma",
 ]
-
+ROLLING_N = 10
 # Capital
 INITIAL_AMOUNT = 1000000
