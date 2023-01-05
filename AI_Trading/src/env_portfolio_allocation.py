@@ -80,7 +80,11 @@ class portfolioAllocationEnv(gym.Env):
                 turbulence_threshold=None,
                 lookback=252,
                 alpha = 0,
-                add_window = 0):
+                add_window = 0,
+                dis_bins = None,
+                dis_type = None):
+        self.dis_bins = dis_bins
+        self.dis_type = dis_type
         self.add_window = add_window
         self.day = self.add_window
         self.lookback=lookback
@@ -290,9 +294,23 @@ class portfolioAllocationEnv(gym.Env):
         return self.state
         
     def softmax_normalization(self, actions):
+        if self.dis_bins:
+            if self.dis_type == 'num':
+                actions = np.round(actions * (self.dis_bins - 1) + 1) # transform into integers between [1, N]
+                actions = actions / np.sum(actions)
+                return actions
+            if self.dis_type == 'hare':
+                actions = (actions + 1e-10) / np.sum(actions) * self.dis_bins
+                floating = actions - np.floor(actions)
+                actions = np.floor(actions)
+                remains = self.dis_bins - np.sum(actions).astype(int)
+                actions[np.argsort(floating)[-remains:]] += 1
+                actions = actions / self.dis_bins
+                return actions
         numerator = np.exp(actions)
         denominator = np.sum(np.exp(actions))
         softmax_output = numerator/denominator
+
         return softmax_output
 
     
