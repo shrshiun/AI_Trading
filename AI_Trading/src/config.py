@@ -19,6 +19,8 @@ TEST_END_DATE = ['2008-12-31', '2009-12-31', '2010-12-31', '2011-12-31', '2012-1
 # Preprocess
 ## covariance
 LOOKBACK = 252
+## window
+ADD_WINDOW = 0
 
 ## stockstats technical indicator column names
 # check https://pypi.org/project/stockstats/ for different names
@@ -32,6 +34,7 @@ INDICATORS = [
     "close_30_sma",
     "close_60_sma",
 ]
+
 ROLLING_N = 10
 # Capital
 INITIAL_AMOUNT = 1000000

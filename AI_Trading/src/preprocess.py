@@ -74,32 +74,22 @@ def covarianceMatrix(df):
     df = df.sort_values(['date','tic']).reset_index(drop=True)
     return df
 
-def preprocess(trainStart, trainEnd, testStart, testEnd):
+def preprocess(trainStart, trainEnd, testStart, testEnd, cov = True):
     trainEnd = str((datetime.strptime(trainEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
     testEnd = str((datetime.strptime(testEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
     data1 = featureEngineering(load_data(config.VTI, 'VTI'),trainStart, trainEnd,testEnd)
     data2 = featureEngineering(load_data(config.VNQ, 'VNQ'),trainStart, trainEnd,testEnd)
     data3 = featureEngineering(load_data(config.TLT, 'TLT'),trainStart, trainEnd,testEnd)
     data = pd.concat([data1, data2, data3])
-    data_preprocessed = covarianceMatrix(data)
+    if cov:
+        data_preprocessed = covarianceMatrix(data)
+    else:
+        data_preprocessed = data
+    if config.ADD_WINDOW > 0:
+        trainStart = str((datetime.strptime(trainStart, '%Y-%m-%d') - relativedelta(days=config.ADD_WINDOW)).date())
+        testStart = str((datetime.strptime(testStart, '%Y-%m-%d') - relativedelta(days=config.ADD_WINDOW)).date())
     train = data_split(data_preprocessed, trainStart, trainEnd)
     test = data_split(data_preprocessed, testStart, testEnd)
-    return train,test
-
-def evalPreprocess(trainStart, trainEnd, testStart, testEnd, isChange_test = False):
-    trainEnd = str((datetime.strptime(trainEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
-    testEnd = str((datetime.strptime(testEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
-    data1 = load_data(config.VTI, 'VTI')
-    data2 = load_data(config.VNQ, 'VNQ')
-    data3 = load_data(config.TLT, 'TLT')
-    data = pd.concat([data1, data2, data3])
-    if isChange_test:
-        train = data_split(data, trainStart, trainEnd)
-        test = data_split(data, testStart, testEnd)
-    else:
-        data_preprocessed = covarianceMatrix(data)
-        train = data_split(data_preprocessed, trainStart, trainEnd)
-        test = data_split(data_preprocessed, testStart, testEnd)
     return train,test
 
 def split_train_test_data():

@@ -80,8 +80,9 @@ class portfolioAllocationEnv(gym.Env):
                 turbulence_threshold=None,
                 lookback=252,
                 alpha = 0,
-                day = 0):
-        self.day = day
+                add_window = 0):
+        self.add_window = add_window
+        self.day = self.add_window
         self.lookback=lookback
         self.df = df
         self.stock_dim = stock_dim
@@ -101,25 +102,29 @@ class portfolioAllocationEnv(gym.Env):
             # action_space normalization and shape is self.stock_dim
             self.action_space = spaces.Box(low=0, high=1, shape = (self.action_space,))
         # covariance matrix + technical indicators
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape = (self.state_space+1,self.state_space))
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape = (self.state_space+1+4*self.add_window, self.state_space))
         # self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape = (self.state_space+len(self.tech_indicator_list)+6,self.state_space))
 
         # load data from a pandas dataframe
-        self.data = self.df.loc[self.day, :]
-        self.covs = self.data['cov_list'].values[0]
-        self.state =  np.append(np.array(self.covs), [self.data[tech].values.tolist() for tech in self.tech_indicator_list ], axis=0)
+        self.data = self.df.loc[self.day-self.add_window:self.day]
+        # self.covs = self.data['cov_list'].values[0]
+        # self.state =  np.append(np.array(self.covs), [self.data[tech].values.tolist() for tech in self.tech_indicator_list ], axis=0)
         # info = [self.data[tech].values.tolist() for tech in self.tech_indicator_list ]
         info = []
-        info.append(self.df.loc[self.day,:].open_daily_return) # open(pct)
-        info.append(self.df.loc[self.day,:].high_daily_return) # high(pct)
-        info.append(self.df.loc[self.day,:].low_daily_return) # low(pct)
-        info.append(self.df.loc[self.day,:].daily_return) # close(pct)
+        if self.add_window > 0:
+            for i in range(self.add_window,0,-1):
+                info.append(self.df.loc[self.day-i].open_daily_return.to_list())# open(pct)
+                info.append(self.df.loc[self.day-i].high_daily_return.to_list()) # high(pct)
+                info.append(self.df.loc[self.day-i].low_daily_return.to_list()) # low(pct)
+                info.append(self.df.loc[self.day-i].daily_return.to_list()) # close(pct)
+                
+        info.append(self.df.loc[self.day,:].open_daily_return.to_list()) # open(pct)
+        info.append(self.df.loc[self.day,:].high_daily_return.to_list()) # high(pct)
+        info.append(self.df.loc[self.day,:].low_daily_return.to_list()) # low(pct)
+        info.append(self.df.loc[self.day,:].daily_return.to_list()) # close(pct)
+        info.append(self.df.loc[self.day,:].macd.to_list()) # close(pct)
         close = np.array(self.df.loc[self.day,:].close)
         close_mean = np.array(self.df.loc[self.day,:].close_mean) # 特例(平均包含自己)
-        # info.append((close / close_mean).tolist()) # close / close_mean (n=10)
-        # info.append([1/self.stock_dim]*self.stock_dim) # action_mean(n=10)
-
-        # info.append([0]*self.stock_dim) # last action return
         # self.state =  np.append(np.array(self.covs), info, axis=0)
         self.state = info
         self.terminal = False     
@@ -131,6 +136,7 @@ class portfolioAllocationEnv(gym.Env):
         # memorize portfolio return each step
         self.portfolio_return = 0
         self.portfolio_return_memory = [0]
+        self.negative_portfolio_return_memory = []
         self.actions_memory=[[1/self.stock_dim]*self.stock_dim]
         self.share_memory = [[0]*self.stock_dim]
         self.date_memory=[self.data.date.unique()[0]]
@@ -227,22 +233,30 @@ class portfolioAllocationEnv(gym.Env):
 
     def reset(self):
         self.asset_memory = [self.initial_amount]
-        self.day = 0
-        self.data = self.df.loc[self.day,:]
+        self.day = self.add_window
+        self.data = self.df.loc[self.day-self.add_window:self.day]
         # load states
-        self.covs = self.data['cov_list'].values[0]
+        # self.covs = self.data['cov_list'].values[0]
         # self.state =  np.append(np.array(self.covs), [self.data[tech].values.tolist() for tech in self.tech_indicator_list ], axis=0)
         # info = [self.data[tech].values.tolist() for tech in self.tech_indicator_list ]
         info = []
-        info.append(self.df.loc[self.day,:].open_daily_return) # open(pct)
-        info.append(self.df.loc[self.day,:].high_daily_return) # high(pct)
-        info.append(self.df.loc[self.day,:].low_daily_return) # low(pct)
-        info.append(self.df.loc[self.day,:].daily_return) # close(pct)
+        if self.add_window > 0:
+            for i in range(self.add_window,0,-1):
+                info.append(self.df.loc[self.day-i].open_daily_return.to_list())# open(pct)
+                info.append(self.df.loc[self.day-i].high_daily_return.to_list()) # high(pct)
+                info.append(self.df.loc[self.day-i].low_daily_return.to_list()) # low(pct)
+                info.append(self.df.loc[self.day-i].daily_return.to_list()) # close(pct)
+
+        info.append(self.df.loc[self.day,:].open_daily_return.to_list()) # open(pct)
+        info.append(self.df.loc[self.day,:].high_daily_return.to_list()) # high(pct)
+        info.append(self.df.loc[self.day,:].low_daily_return.to_list()) # low(pct)
+        info.append(self.df.loc[self.day,:].daily_return.to_list()) # close(pct)
+        # info.append(self.df.loc[self.day,:].macd.to_list()) # close(pct)
         close = np.array(self.df.loc[self.day,:].close)
         close_mean = np.array(self.df.loc[self.day,:].close_mean) # 特例(平均包含自己)
         # info.append((close / close_mean).tolist()) # close / close_mean (n=10)
         # info.append([1/self.stock_dim]*self.stock_dim) # action_mean(n=10)
-        
+
         # info.append([0]*self.stock_dim) #last_action return
         # self.state =  np.append(np.array(self.covs), info, axis=0)
         self.state = info
@@ -251,6 +265,7 @@ class portfolioAllocationEnv(gym.Env):
         #self.trades = 0
         self.terminal = False 
         self.portfolio_return_memory = [0]
+        self.negative_portfolio_return_memory = []
         self.actions_memory=[[1/self.stock_dim]*self.stock_dim]
         self.date_memory=[self.data.date.unique()[0]]
         self.share_memory=[[0]*self.stock_dim]
@@ -269,7 +284,6 @@ class portfolioAllocationEnv(gym.Env):
         self.closeReward_memory = [0]
         self.weightReward_memory = [0]
         
-
         return self.state
     
     def render(self, mode='human'):
@@ -302,7 +316,7 @@ class portfolioAllocationEnv(gym.Env):
         
         action_list = self.actions_memory
         df_actions = pd.DataFrame(action_list)
-        columns = self.data.tic.values.tolist()
+        columns = self.data.tic.unique().tolist()
         # if self.add_cash:
         #     columns.append('cash')
         df_actions.columns = columns
