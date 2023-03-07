@@ -4,7 +4,7 @@ from AI_Trading.src import model_config
 from stable_baselines3.common.logger import configure
 import os
 
-def trainPortfolioAllocation(exp, env_train, model_name, model_index, continous=False, model=None, total_timesteps = 10**5):
+def trainPortfolioAllocation(exp, env_train, model_name, model_index, continuous=False, model=None, total_timesteps = 10**5):
     env_train, _ = env_train.get_sb_env()
     agent = DRLAgent_sb3(env = env_train)
     save_path = os.path.join(config.TRAINED_MODEL_PATH, exp)
@@ -16,21 +16,21 @@ def trainPortfolioAllocation(exp, env_train, model_name, model_index, continous=
             pass
 
     if model_name == 'A2C':
-        model_a2c = agent.get_model(model_name="a2c",model_kwargs = model_config.A2C_PARAMS)
+        model_a2c = agent.get_model(model_name="a2c", model_kwargs = model_config.A2C_PARAMS)
         train_model = agent.train_model(model=model_a2c, 
                                 tb_log_name='a2c',
-                                total_timesteps=model_config.TOTAL_TIMESTEPS)
+                                total_timesteps=total_timesteps)
         train_model.save(save_path + '/A2C_' +  str(model_index) + '.zip')
 
     elif model_name == 'PPO':
         model_ppo = agent.get_model("ppo",model_kwargs = model_config.PPO_PARAMS)
         train_model = agent.train_model(model=model_ppo, 
                              tb_log_name='ppo',
-                             total_timesteps=model_config.TOTAL_TIMESTEPS)
+                             total_timesteps=total_timesteps)
         train_model.save(save_path+ '/PPO_'+  str(model_index) + '.zip')
 
     elif model_name == 'DDPG':
-        if continous:
+        if continuous:
             model_ddpg = model
             model_ddpg.set_env(env_train, force_reset=False)
         else:
@@ -44,12 +44,12 @@ def trainPortfolioAllocation(exp, env_train, model_name, model_index, continous=
         model_sac = agent.get_model("sac",model_kwargs = model_config.SAC_PARAMS)
         train_model = agent.train_model(model=model_sac, 
                              tb_log_name='sac',
-                             total_timesteps= 10**5)
+                             total_timesteps= total_timesteps)
         train_model.save(save_path + '/SAC_' +  str(model_index) + '.zip')
 
     elif model_name == 'TD3':
         model_td3 = agent.get_model("td3",model_kwargs = model_config.TD3_PARAMS)
         train_model = agent.train_model(model=model_td3, 
                              tb_log_name='td3',
-                             total_timesteps= 10**5)
+                             total_timesteps= total_timesteps)
         train_model.save(save_path + '/TD3_' +  str(model_index) + '.zip')
