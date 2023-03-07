@@ -1,5 +1,6 @@
 from statistics import mean, stdev
 from AI_Trading.src.env_portfolio_allocation import portfolioAllocationEnv
+from AI_Trading.src.blackLitterman import *
 from AI_Trading.src import config
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -179,10 +180,13 @@ class trendConcernEnv(portfolioAllocationEnv):
             self.covs = self.data['cov_list'].values[0]
             # info = [self.data[tech].values.tolist() for tech in self.tech_indicator_list ]
             info = []
-            info.append(self.df.loc[self.day,:].open_daily_return) # open
-            info.append(self.df.loc[self.day,:].high_daily_return) # high
-            info.append(self.df.loc[self.day,:].low_daily_return) # low
-            info.append(self.df.loc[self.day,:].daily_return) # close
+            info.append(self.df.loc[self.day,:].open_normalized_return.to_list())# open(pct)
+            info.append(self.df.loc[self.day,:].high_normalized_return.to_list()) # high(pct)
+            info.append(self.df.loc[self.day,:].low_normalized_return.to_list()) # low(pct)
+            info.append(self.df.loc[self.day,:].close_normalized_return.to_list()) # close(pct)
+            info.append(self.df.loc[self.day,:].macd.to_list()) # macd
+            info.append(self.df.loc[self.day,:].macds.to_list()) # macds
+            info.append(self.df.loc[self.day,:].macdh.to_list()) # macdh
             close = np.array(self.df.loc[self.day,:].close)
             close_mean = np.array(self.df.loc[self.day-1,:].close_mean)
             # info.append((close / close_mean).tolist()) # close / close_mean (n=10)
@@ -291,13 +295,8 @@ class riskSensitiveEnv(portfolioAllocationEnv):
             info.append(self.df.loc[self.day,:].high_daily_return.to_list()) # high
             info.append(self.df.loc[self.day,:].low_daily_return.to_list()) # low
             info.append(self.df.loc[self.day,:].daily_return.to_list()) # close
-            close = np.array(self.df.loc[self.day,:].close)
-            close_mean = np.array(self.df.loc[self.day-1,:].close_mean)
-            # info.append((close / close_mean).tolist()) # close / close_mean (n=10)
-            # info.append(weights_mean) # action_mean(n=10)
             # self.state =  np.append(np.array(self.covs), info, axis=0)
             self.state = info
-            self.close_mean_memory.append(close_mean)
             # calcualte portfolio return
             share = np.floor(weights * self.portfolio_value / last_day_memory.close.values)
             self.share_memory.append(share)
@@ -655,8 +654,6 @@ class downsideRiskEnv(portfolioAllocationEnv):
         return self.state, self.reward, self.terminal, {}
 
 class windowEnv(portfolioAllocationEnv):
-    # state: window OHLC(Pct)
-    # reward: log(return)
     def step(self, actions):
         self.terminal = self.day >= len(self.df.index.unique())-1
 
@@ -719,23 +716,34 @@ class windowEnv(portfolioAllocationEnv):
             # info = [self.data[tech].values.tolist() for tech in self.tech_indicator_list ]
             info = []
             if config.ADD_WINDOW > 0:
-                for i in range(config.ADD_WINDOW,0,-1):
-                    info.append(self.df.loc[self.day-i].open_daily_return.to_list())# open(pct)
-                    info.append(self.df.loc[self.day-i].high_daily_return.to_list()) # high(pct)
-                    info.append(self.df.loc[self.day-i].low_daily_return.to_list()) # low(pct)
-                    info.append(self.df.loc[self.day-i].daily_return.to_list()) # close(pct)
+                # close_t = self.df.loc[self.day-self.add_window,:].close.to_list() #close_0
+                close_t = self.df.loc[self.day,:].close.to_list() #close_t
+                for i in range(config.ADD_WINDOW,-1,-1):
+                    # info.append(self.df.loc[self.day-i].open_normalized_return.to_list())# open(pct)
+                    # info.append(self.df.loc[self.day-i].high_normalized_return.to_list()) # high(pct)
+                    # info.append(self.df.loc[self.day-i].low_normalized_return.to_list()) # low(pct)
+                    # info.append(self.df.loc[self.day-i].close_normalized_return.to_list()) # close(pct)
+                    info.append((self.df.loc[self.day-i].open/close_t).to_list())# open(closeNormalized)
+                    info.append((self.df.loc[self.day-i].high/close_t).to_list()) # high(closeNormalized)
+                    info.append((self.df.loc[self.day-i].low/close_t).to_list()) # low(closeNormalizedd)
+                    info.append((self.df.loc[self.day-i].close/close_t).to_list()) # close(closeNormalized)
+                    info.append(self.df.loc[self.day-i,:].macd.to_list()) # macd
+                    info.append(self.df.loc[self.day-i,:].macds.to_list()) # macds
+                    info.append(self.df.loc[self.day-i,:].macdh.to_list()) # macdh
 
-            info.append(self.df.loc[self.day,:].open_daily_return.to_list()) # open(pct)
-            info.append(self.df.loc[self.day,:].high_daily_return.to_list()) # high(pct)
-            info.append(self.df.loc[self.day,:].low_daily_return.to_list()) # low(pct)
-            info.append(self.df.loc[self.day,:].daily_return.to_list()) # close(pct)
-            # close = np.array(self.df.loc[self.day,:].close)
-            close_mean = np.array(self.df.loc[self.day-1,:].close_mean)
-            # info.append((close / close_mean).tolist()) # close / close_mean (n=10)
-            # info.append(weights_mean) # action_mean(n=10)
+            # info.append(self.df.loc[self.day,:].open_normalized_return.to_list()) # open(pct)
+            # info.append(self.df.loc[self.day,:].high_normalized_return.to_list()) # high(pct)
+            # info.append(self.df.loc[self.day,:].low_normalized_return.to_list()) # low(pct)
+            # info.append(self.df.loc[self.day,:].close_normalized_return.to_list()) # close(pct)
+            # info.append(self.df.loc[self.day,:].open_normalized.to_list()) # open(closeNormalized)
+            # info.append(self.df.loc[self.day,:].high_normalized.to_list()) # high(closeNormalized)
+            # info.append(self.df.loc[self.day,:].low_normalized.to_list()) # low(closeNormalized)
+            # info.append(self.df.loc[self.day,:].close_normalized.to_list()) # close(closeNormalized)
+            # info.append(self.df.loc[self.day,:].macd.to_list()) # macd
+            # info.append(self.df.loc[self.day,:].macds.to_list()) # macds
+            # info.append(self.df.loc[self.day,:].macdh.to_list()) # macdh
             # self.state =  np.append(np.array(self.covs), info, axis=0)
             self.state = info
-            self.close_mean_memory.append(close_mean)
             # calcualte portfolio return
             share = np.floor(weights * self.portfolio_value / last_day_memory.close.values)
             self.share_memory.append(share)
@@ -752,16 +760,26 @@ class windowEnv(portfolioAllocationEnv):
             # self.portfolio_return = (new_portfolio_value / self.portfolio_value) -1
             self.portfolio_value = new_portfolio_value
             # save into memory
+            # if self.portfolio_return < 0:
+            #     self.negative_portfolio_return_memory.append(self.portfolio_return)
             self.portfolio_return_memory.append(self.portfolio_return)
             self.date_memory.append(self.data.loc[self.day,:].date.unique()[0])
             self.asset_memory.append(new_portfolio_value)
-            self.reward = self.portfolio_return
+
+            var = np.var(self.portfolio_return_memory)
+            calmar = ep.calmar_ratio(pd.Series(self.portfolio_return_memory))
+
+            # self.reward = (self.portfolio_return + self.alpha * var) # risk return
+            # print(f'return:{self.portfolio_return} , var: {var}')
+            # self.reward = (self.portfolio_return + abs(self.alpha * calmar)) # calmar return
+            # self.reward = abs(self.alpha * var) # variance
+            self.reward = self.portfolio_return # log-return
             self.reward_memory.append(self.reward)
         return self.state, self.reward, self.terminal, {}
 
-class macdConcernEnv(portfolioAllocationEnv):
-    # state: OHLC(Pct) + macd(strandard normalized)
-    # reward: log(return) - alpha*var(return)
+class blackLittermanEnv(portfolioAllocationEnv):
+    # state: window OHLC(closeNormalized)
+    # reward: log(return)
     def step(self, actions):
         self.terminal = self.day >= len(self.df.index.unique())-1
 
@@ -785,7 +803,7 @@ class macdConcernEnv(portfolioAllocationEnv):
             calmar = ep.calmar_ratio(pd.Series(self.portfolio_return_memory))
             reward = sum(self.reward_memory)
             if self.is_test_set == False:
-                df_training_weight = pd.DataFrame(self.actions_memory,columns =self.data.tic.values)
+                df_training_weight = pd.DataFrame(self.actions_memory,columns =self.data.loc[self.day,:].tic.values)
                 df_training_weight['date'] = self.date_memory
                 df_training_weight = df_training_weight.set_index('date')
                 df_training_weight.to_csv(self.training_weight_path)
@@ -805,58 +823,58 @@ class macdConcernEnv(portfolioAllocationEnv):
 
             return self.state, self.reward, self.terminal, {}
         else:
-            weights = self.softmax_normalization(actions)
+            prices = self.df.set_index('date')
+            pvt = prices.pivot_table(values='close', index='date',columns='tic')
+            # weights = self.softmax_normalization(actions)
+            print(f'{self.day}: {actions}')
+            weights= blackLitterman(self.return_list, actions,pvt)
             weights = weights[:self.stock_dim]
             self.actions_memory.append(weights[:self.stock_dim])
-            if self.day > 10:
-                weights_mean_past = np.mean(self.actions_memory[-11:-1],axis=0)
-                weights_mean = np.mean(self.actions_memory[-10:],axis=0)
-            else:
-                weights_mean_past = np.mean(self.actions_memory[:-1],axis=0)
-                weights_mean = np.mean(self.actions_memory,axis=0)
-            self.weights_mean_memory.append(weights_mean_past)
-            last_day_memory = self.data
+            last_day_memory = self.data.loc[self.day,:]
             self.close_memory.append(last_day_memory.close.tolist())
             #load next state
             self.day += 1
-            self.data = self.df.loc[self.day,:]
-            self.covs = self.data['cov_list'].values[0]
-            # info = [self.data[tech].values.tolist() for tech in self.tech_indicator_list ]
+            self.data = self.df.loc[self.day-config.ADD_WINDOW:self.day]
+            self.return_list = self.df.loc[self.day].return_list.to_list()[0]
+            # self.covs = self.data['cov_list'].values[0]
             info = []
-            info.append(self.df.loc[self.day,:].open_daily_return.to_list()) # open
-            info.append(self.df.loc[self.day,:].high_daily_return.to_list()) # high
-            info.append(self.df.loc[self.day,:].low_daily_return.to_list()) # low
-            info.append(self.df.loc[self.day,:].daily_return.to_list()) # close
-            info.append(self.df.loc[self.day,:].macd.to_list()) # close
-            close = np.array(self.df.loc[self.day,:].close)
-            close_mean = np.array(self.df.loc[self.day-1,:].close_mean)
-            # info.append((close / close_mean).tolist()) # close / close_mean (n=10)
-            # info.append(weights_mean) # action_mean(n=10)
+            if config.ADD_WINDOW > 0:
+                # close_t = self.df.loc[self.day-self.add_window,:].close.to_list() #close_0
+                close_t = self.df.loc[self.day,:].close.to_list() #close_t
+                for i in range(config.ADD_WINDOW,-1,-1):
+                    info.append((self.df.loc[self.day-i].open/close_t).to_list())# open(closeNormalized)
+                    info.append((self.df.loc[self.day-i].high/close_t).to_list()) # high(closeNormalized)
+                    info.append((self.df.loc[self.day-i].low/close_t).to_list()) # low(closeNormalizedd)
+                    info.append((self.df.loc[self.day-i].close/close_t).to_list()) # close(closeNormalized)
+                    info.append(self.df.loc[self.day-i,:].macd.to_list()) # macd
+                    info.append(self.df.loc[self.day-i,:].macds.to_list()) # macds
+                    info.append(self.df.loc[self.day-i,:].macdh.to_list()) # macdh
+
             # self.state =  np.append(np.array(self.covs), info, axis=0)
             self.state = info
-            self.close_mean_memory.append(close_mean)
             # calcualte portfolio return
-            share = np.floor(weights * self.portfolio_value / last_day_memory.close.values)
+            share = np.floor(np.array(weights) * self.portfolio_value / np.array(last_day_memory.close.values))
             self.share_memory.append(share)
             cash = self.portfolio_value - sum(share * last_day_memory.close.values)
 
             if self.transaction_cost_pct > 0:
-                share_change = np.sum(abs(np.array(share) - np.array(self.share_memory[self.day-1])) * np.array(last_day_memory.close.values))
+                share_change = np.sum(abs(np.array(share) - np.array(self.share_memory[self.day-config.ADD_WINDOW-1])) * np.array(last_day_memory.close.values))
                 trans_cost = share_change * self.transaction_cost_pct
             else:
                 trans_cost = 0
             # update portfolio value
-            new_portfolio_value = sum(share * self.data.close.values) + cash - trans_cost
+            new_portfolio_value = sum(share * self.data.loc[self.day,:].close.values) + cash - trans_cost
             self.portfolio_return = np.log(new_portfolio_value / self.portfolio_value)
-            # self.portfolio_return = (new_portfolio_value / self.portfolio_value) -1
             self.portfolio_value = new_portfolio_value
             # save into memory
             self.portfolio_return_memory.append(self.portfolio_return)
-            self.date_memory.append(self.data.date.unique()[0])
+            self.date_memory.append(self.data.loc[self.day,:].date.unique()[0])
             self.asset_memory.append(new_portfolio_value)
 
             var = np.var(self.portfolio_return_memory)
 
-            self.reward = (self.portfolio_return - abs(self.alpha * var))
+            # self.reward = (self.portfolio_return - abs(self.alpha * var)) # risk return
+            # self.reward = abs(self.alpha * var) # variance
+            self.reward = self.portfolio_return # log-return
             self.reward_memory.append(self.reward)
         return self.state, self.reward, self.terminal, {}
