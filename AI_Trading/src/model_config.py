@@ -2,7 +2,7 @@
 from random import seed
 
 
-A2C_PARAMS = {"n_steps": 5, "ent_coef": 0.01, "learning_rate": 0.0009, "seed": 0}
+A2C_PARAMS = {"n_steps": 5, "ent_coef": 0.01, "learning_rate": 3e-4, "seed": 0}
 PPO_PARAMS = {
     "n_steps": 2048,
     "ent_coef": 0.01,
