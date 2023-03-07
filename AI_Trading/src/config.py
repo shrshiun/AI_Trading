@@ -20,12 +20,14 @@ TEST_END_DATE = ['2008-12-31', '2009-12-31', '2010-12-31', '2011-12-31', '2012-1
 ## covariance
 LOOKBACK = 252
 ## window
-ADD_WINDOW = 0
+ADD_WINDOW = 19
 
 ## stockstats technical indicator column names
 # check https://pypi.org/project/stockstats/ for different names
 INDICATORS = [
     "macd",
+    "macdh",
+    "macds",
     "boll_ub",
     "boll_lb",
     "rsi_30",
@@ -38,3 +40,5 @@ INDICATORS = [
 ROLLING_N = 10
 # Capital
 INITIAL_AMOUNT = 1000000
+DF_ACTION_ORDER = ['date', 'TLT', 'VNQ', 'VTI']
+REBALANCE_DURATION = 252
