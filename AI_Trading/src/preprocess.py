@@ -1,6 +1,7 @@
 from finrl.meta.preprocessor.preprocessors import FeatureEngineer, data_split
 from dateutil.relativedelta import relativedelta
 from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 from datetime import datetime
 
 import os
@@ -19,7 +20,8 @@ def create_dir():
 
 def load_data(filePath, name):
     data = pd.read_csv(filePath)
-    data = data.rename(columns={'Date': 'date', 'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close', 'Adj Close': 'adjcp', 'Volume': 'volume'})
+    # data = data.rename(columns={'Date': 'date', 'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close', 'Adj Close': 'adjcp', 'Volume': 'volume'})
+    data = data.rename(columns={'Date': 'date', 'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'closeOri', 'Adj Close': 'close', 'Volume': 'volume'})
     data['tic'] = name
     return data
 
@@ -30,8 +32,18 @@ def featureEngineering(data,trainStart, trainEnd, testEnd):
                     use_turbulence=False,
                     user_defined_feature = True)
     data = fe.preprocess_data(data)
+    # if 'macd' in data:
+    #     data.macd = StandardScaler().fit(data[(data.date>=trainStart) & (data.date<trainEnd)].macd.values.reshape(-1,1)).transform(data.macd.values.reshape(-1,1))
+    # if 'macdh' in data:
+    #     data.macdh = StandardScaler().fit(data[(data.date>=trainStart) & (data.date<trainEnd)].macdh.values.reshape(-1,1)).transform(data.macdh.values.reshape(-1,1))
+    # if 'macds' in data:
+    #     data.macds = StandardScaler().fit(data[(data.date>=trainStart) & (data.date<trainEnd)].macds.values.reshape(-1,1)).transform(data.macds.values.reshape(-1,1))
     if 'macd' in data:
-        data.macd = StandardScaler().fit(data[(data.date>=trainStart) & (data.date<trainEnd)].macd.values.reshape(-1,1)).transform(data.macd.values.reshape(-1,1))
+        data.macd = MinMaxScaler(feature_range=(-1, 1)).fit(data[(data.date>=trainStart) & (data.date<trainEnd)].macd.values.reshape(-1,1)).transform(data.macd.values.reshape(-1,1))
+    if 'macdh' in data:
+        data.macdh = MinMaxScaler(feature_range=(-1, 1)).fit(data[(data.date>=trainStart) & (data.date<trainEnd)].macdh.values.reshape(-1,1)).transform(data.macdh.values.reshape(-1,1))
+    if 'macds' in data:
+        data.macds = MinMaxScaler(feature_range=(-1, 1)).fit(data[(data.date>=trainStart) & (data.date<trainEnd)].macds.values.reshape(-1,1)).transform(data.macds.values.reshape(-1,1))
     if 'boll_ub' in data:
         data.boll_ub = StandardScaler().fit(data[(data.date>=trainStart) & (data.date<trainEnd)].boll_ub.values.reshape(-1,1)).transform(data.boll_ub.values.reshape(-1,1))
     if 'boll_lb' in data:
@@ -54,48 +66,62 @@ def covarianceMatrix(df):
     # add covariance matrix as states
     df=df.sort_values(['date','tic'],ignore_index=True)
     df.index = df.date.factorize()[0]
-
+    
     cov_list = []
     return_list = []
+    return_lookback_list = []
 
     # look back is one year
     lookback = config.LOOKBACK
     for i in range(lookback,len(df.index.unique())):
         data_lookback = df.loc[i-lookback:i,:]
         price_lookback=data_lookback.pivot_table(index = 'date',columns = 'tic', values = 'close')
-        return_lookback = price_lookback.pct_change().dropna()
-        return_list.append(return_lookback)
+        # price_lookback=data_lookback.pivot_table(index = 'date',columns = 'tic', values = 'adjcp')
+        return_pct = price_lookback.pct_change().dropna()
+        return_lookback = price_lookback.pct_change(periods=252).dropna()
+        return_list.append(return_pct)
+        return_lookback_list.append(return_lookback)
 
-        covs = return_lookback.cov().values 
+        covs = return_pct.cov().values 
         cov_list.append(covs)
     
-    df_cov = pd.DataFrame({'date':df.date.unique()[lookback:],'cov_list':cov_list,'return_list':return_list})
+    df_cov = pd.DataFrame({'date':df.date.unique()[lookback:],'cov_list':cov_list,'return_list':return_list, 'return_lookback':return_lookback_list})
     df = df.merge(df_cov, on='date')
     df = df.sort_values(['date','tic']).reset_index(drop=True)
     return df
 
-def preprocess(trainStart, trainEnd, testStart, testEnd, cov = True):
+def preprocess(trainStart, trainEnd, testStart, testEnd, window= 0, cov = True):
     trainEnd = str((datetime.strptime(trainEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
     testEnd = str((datetime.strptime(testEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
-    data1 = featureEngineering(load_data(config.VTI, 'VTI'),trainStart, trainEnd,testEnd)
-    data2 = featureEngineering(load_data(config.VNQ, 'VNQ'),trainStart, trainEnd,testEnd)
-    data3 = featureEngineering(load_data(config.TLT, 'TLT'),trainStart, trainEnd,testEnd)
+    data1 = featureEngineering(load_data(config.VNQ, 'VNQ'),trainStart, trainEnd,testEnd)
+    data2 = featureEngineering(load_data(config.TLT, 'TLT'),trainStart, trainEnd,testEnd)
+    data3 = featureEngineering(load_data(config.VTI, 'VTI'),trainStart, trainEnd,testEnd)
     data = pd.concat([data1, data2, data3])
     if cov:
         data_preprocessed = covarianceMatrix(data)
     else:
         data_preprocessed = data
-    if config.ADD_WINDOW > 0:
-        trainStart = str((datetime.strptime(trainStart, '%Y-%m-%d') - relativedelta(days=config.ADD_WINDOW)).date())
-        testStart = str((datetime.strptime(testStart, '%Y-%m-%d') - relativedelta(days=config.ADD_WINDOW)).date())
+    if window > 0:
+        # trainStart = str((datetime.strptime(trainStart, '%Y-%m-%d') - relativedelta(days=window)).date())
+        # testStart = str((datetime.strptime(testStart, '%Y-%m-%d') - relativedelta(days=window)).date())
+        train = data_split(data_preprocessed, trainStart, trainEnd)
+        test = data_split(data_preprocessed, testStart, testEnd)
+        trainWindowDate = data1.loc[data1[data1.date==''.join(train.loc[0].date.unique())].index[0]-window].date
+        testWindowDate = data1.loc[data1[data1.date==''.join(test.loc[0].date.unique())].index[0]-window].date
+        trainStart = trainWindowDate
+        testStart = testWindowDate
+    print(f'macd max:{data_preprocessed.macd.max()},min:{data_preprocessed.macd.min()},median:{data_preprocessed.macd.median()},std:{data_preprocessed.macd.std()}')
+    print(f'macds max:{data_preprocessed.macds.max()},min:{data_preprocessed.macds.min()},median:{data_preprocessed.macds.median()},std:{data_preprocessed.macds.std()}')
+    print(f'macdh max:{data_preprocessed.macdh.max()},min:{data_preprocessed.macdh.min()},median:{data_preprocessed.macdh.median()},std:{data_preprocessed.macdh.std()}')
+
     train = data_split(data_preprocessed, trainStart, trainEnd)
     test = data_split(data_preprocessed, testStart, testEnd)
     return train,test
 
 def split_train_test_data():
-    data1 = load_data(config.VTI, 'VTI')
-    data2 = load_data(config.VNQ, 'VNQ')
-    data3 = load_data(config.TLT, 'TLT')
+    data1 = load_data(config.VNQ, 'VNQ')
+    data2 = load_data(config.TLT, 'TLT')
+    data3 = load_data(config.VTI, 'VTI')
     data = pd.concat([data1, data2, data3])
     
     trainEnd = datetime.strptime(config.TRAIN_END_DATE, '%Y-%m-%d')
@@ -121,8 +147,18 @@ def customized_feature(data, rolling_n):
         :return: (df) pandas dataframe
         """
         df = data.copy()
-        df["open_daily_return"] = df.open.pct_change(1)
-        df["high_daily_return"] = df.high.pct_change(1)
-        df["low_daily_return"] = df.low.pct_change(1)
-        df['close_mean'] = df.close.rolling(rolling_n).mean()
+
+        # df["open_normalized"] = (df.open-df.close)/df.close
+        # df["high_normalized"] = (df.high-df.close)/df.close
+        # df["low_normalized"] = (df.low-df.close)/df.close
+        # df['close_normalized'] = (df.close-df.close)/df.close
+
+        # df["open_normalized_return"] = df.open_normalized.pct_change(1)
+        # df["high_normalized_return"] = df.high_normalized.pct_change(1)
+        # df["low_normalized_return"] = df.low_normalized.pct_change(1)
+        # df["close_normalized_return"] = df.close_normalized.pct_change(1)
+        # df["open_normalized_return"] = df.open.pct_change(1)
+        # df["high_normalized_return"] = df.high.pct_change(1)
+        # df["low_normalized_return"] = df.low.pct_change(1)
+        # df["close_normalized_return"] = df.close.pct_change(1)
         return df
