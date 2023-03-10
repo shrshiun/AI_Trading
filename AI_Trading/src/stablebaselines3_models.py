@@ -118,8 +118,6 @@ class DRLAgent:
         test_env.reset()
         for i in range(len(environment.df.index.unique()-config.ADD_WINDOW)):
             action, _states = model.predict(test_obs)
-            # account_memory = test_env.env_method(method_name="save_asset_memory")
-            # actions_memory = test_env.env_method(method_name="save_action_memory")
             test_obs, rewards, dones, info = test_env.step(action)
             if i == (len(environment.df.index.unique())-2-config.ADD_WINDOW):
                 account_memory = test_env.env_method(method_name="save_asset_memory")

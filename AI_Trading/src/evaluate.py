@@ -104,7 +104,6 @@ def getScaleWeightActions(trade, stock=0, debt=0, reit=0):
             scaleWeightActions_df[tic] = w + ([debt/(stock+debt+reit)] * (len(all_date)-1))
         if tic == 'VNQ':
             scaleWeightActions_df[tic] = w + ([reit/(stock+debt+reit)] * (len(all_date)-1))
-    # scaleWeightActions_df = scaleWeightActions_df.set_index('date')
     return scaleWeightActions_df
 
 def getMaxSharpeActions(trade):
@@ -126,13 +125,9 @@ def getMaxSharpeActions(trade):
         df = df[['close','tic']].reset_index()
         df = df.set_index(["tic","index"]).unstack(level=0)
 
-        # avg_returns = df_temp.return_lookback[0].values.tolist()[0]
         avg_returns = expected_returns.mean_historical_return(df_temp.return_list[0], returns_data=True, compounding=True, frequency=1)
-        # avg_returns = expected_returns.mean_historical_return(df, compounding=True).tolist()
-        #portfolio allocation
-        # avg_returns = expected_returns.mean_historical_return(trade[trade.date<=unique_trade_date[i]].reset_index(drop=True).close, compounding=True) # mean return
         ef_max_sharpe = EfficientFrontier(expected_returns=avg_returns, cov_matrix=Sigma, weight_bounds=(0, 1))
-        #maximum sharpe
+        # maximum sharpe
         # raw_weights_max_sharpe = ef_max_sharpe.max_sharpe()
         raw_weights_max_sharpe = ef_max_sharpe.nonconvex_objective(
                 objective_functions.sharpe_ratio,
