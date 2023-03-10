@@ -33,7 +33,6 @@ def computeReturns(actions, trade, transCostRate=0, change_threshold=0, rebalanc
         if index == 0:
             portfolio_value.append(config.INITIAL_AMOUNT)
             share_yesterday = [[0]] * len(all_tic)
-            # print(f'{day}: {portfolio_value}, {share_yesterday}')
         else:
             close_today = []
             close_yesterday = []
@@ -68,7 +67,6 @@ def computeReturns(actions, trade, transCostRate=0, change_threshold=0, rebalanc
                 share = share_yesterday
                 change = False
                 hold_count += 1
-                # print('n',weight_change)
             cash = portfolio_value[index-1] - sum(np.array(share) * close_yesterday)
 
             if transCostRate > 0:
@@ -78,7 +76,6 @@ def computeReturns(actions, trade, transCostRate=0, change_threshold=0, rebalanc
             new_portfolio_value = sum(np.array(share) * close_today) + cash - trans_cost
             portfolio_value.append(new_portfolio_value[0])
             share_yesterday = share
-            # print(f'{day}: {new_portfolio_value}, {share}')
     df_portfolio_value = pd.DataFrame({'date': all_date, 'portfolio_value':portfolio_value})
     returns = get_daily_return(df_portfolio_value, value_col_name='portfolio_value')
     df_returns = returns.to_frame().reset_index()
@@ -93,16 +90,6 @@ def getStats(df_daily_return):
                                 factor_returns=pyfolio_ts,
                                 positions=None, transactions=None, turnover_denom="AGB")
     return pyfolio_ts, perf_stats_all
-
-def getEqualWeightActions(trade):
-    all_date = trade.date.unique().tolist()
-    tics = trade.tic.unique().tolist()
-    ticNums = len(tics)
-    equalWeightActions_df = pd.DataFrame({'date':all_date})
-    for tic in tics:
-        equalWeightActions_df[tic] = [1/ticNums] * len(all_date)
-    # equalWeightActions_df = equalWeightActions_df.set_index('date')
-    return equalWeightActions_df
 
 def getScaleWeightActions(trade, stock=0, debt=0, reit=0):
     all_date = trade.date.unique().tolist()
@@ -119,21 +106,6 @@ def getScaleWeightActions(trade, stock=0, debt=0, reit=0):
             scaleWeightActions_df[tic] = w + ([reit/(stock+debt+reit)] * (len(all_date)-1))
     # scaleWeightActions_df = scaleWeightActions_df.set_index('date')
     return scaleWeightActions_df
-
-def getTicActions(trade, tic):
-    all_date = trade.date.unique().tolist()
-    tics = trade.tic.unique().tolist()
-    ticActions_df = pd.DataFrame({'date':all_date})
-    for t in tics:
-        if t == tic:
-            ticActions_df[t] = [1] * len(all_date)
-        else:
-            ticActions_df[t] = [0] * len(all_date)
-    ticActions_df = ticActions_df.set_index('date')
-    return ticActions_df
-
-# def getRebalanceReturn(trade, stock=0, debt=0, reit=0, rebalanceDuration = 1):
-
 
 def getMaxSharpeActions(trade):
     unique_tic = trade.tic.unique()
