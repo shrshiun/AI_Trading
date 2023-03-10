@@ -693,10 +693,6 @@ class windowEnv(portfolioAllocationEnv):
                 # close_t = self.df.loc[self.day-self.add_window,:].close.to_list() #close_0
                 close_t = self.df.loc[self.day,:].close.to_list() #close_t
                 for i in range(config.ADD_WINDOW,-1,-1):
-                    # info.append(self.df.loc[self.day-i].open_normalized_return.to_list())# open(pct)
-                    # info.append(self.df.loc[self.day-i].high_normalized_return.to_list()) # high(pct)
-                    # info.append(self.df.loc[self.day-i].low_normalized_return.to_list()) # low(pct)
-                    # info.append(self.df.loc[self.day-i].close_normalized_return.to_list()) # close(pct)
                     info.append((self.df.loc[self.day-i].open/close_t).to_list())# open(closeNormalized)
                     info.append((self.df.loc[self.day-i].high/close_t).to_list()) # high(closeNormalized)
                     info.append((self.df.loc[self.day-i].low/close_t).to_list()) # low(closeNormalizedd)
@@ -705,17 +701,6 @@ class windowEnv(portfolioAllocationEnv):
                     info.append(self.df.loc[self.day-i,:].macds.to_list()) # macds
                     info.append(self.df.loc[self.day-i,:].macdh.to_list()) # macdh
 
-            # info.append(self.df.loc[self.day,:].open_normalized_return.to_list()) # open(pct)
-            # info.append(self.df.loc[self.day,:].high_normalized_return.to_list()) # high(pct)
-            # info.append(self.df.loc[self.day,:].low_normalized_return.to_list()) # low(pct)
-            # info.append(self.df.loc[self.day,:].close_normalized_return.to_list()) # close(pct)
-            # info.append(self.df.loc[self.day,:].open_normalized.to_list()) # open(closeNormalized)
-            # info.append(self.df.loc[self.day,:].high_normalized.to_list()) # high(closeNormalized)
-            # info.append(self.df.loc[self.day,:].low_normalized.to_list()) # low(closeNormalized)
-            # info.append(self.df.loc[self.day,:].close_normalized.to_list()) # close(closeNormalized)
-            # info.append(self.df.loc[self.day,:].macd.to_list()) # macd
-            # info.append(self.df.loc[self.day,:].macds.to_list()) # macds
-            # info.append(self.df.loc[self.day,:].macdh.to_list()) # macdh
             # self.state =  np.append(np.array(self.covs), info, axis=0)
             self.state = info
             # calcualte portfolio return
@@ -731,11 +716,8 @@ class windowEnv(portfolioAllocationEnv):
             # update portfolio value
             new_portfolio_value = sum(share * self.data.loc[self.day,:].close.values) + cash - trans_cost
             self.portfolio_return = np.log(new_portfolio_value / self.portfolio_value)
-            # self.portfolio_return = (new_portfolio_value / self.portfolio_value) -1
             self.portfolio_value = new_portfolio_value
             # save into memory
-            # if self.portfolio_return < 0:
-            #     self.negative_portfolio_return_memory.append(self.portfolio_return)
             self.portfolio_return_memory.append(self.portfolio_return)
             self.date_memory.append(self.data.loc[self.day,:].date.unique()[0])
             self.asset_memory.append(new_portfolio_value)
@@ -744,7 +726,6 @@ class windowEnv(portfolioAllocationEnv):
             calmar = ep.calmar_ratio(pd.Series(self.portfolio_return_memory))
 
             # self.reward = (self.portfolio_return + self.alpha * var) # risk return
-            # print(f'return:{self.portfolio_return} , var: {var}')
             # self.reward = (self.portfolio_return + abs(self.alpha * calmar)) # calmar return
             # self.reward = abs(self.alpha * var) # variance
             self.reward = self.portfolio_return # log-return
