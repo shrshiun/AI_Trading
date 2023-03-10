@@ -97,6 +97,7 @@ class portfolioAllocationEnv(gym.Env):
         self.transaction_cost_pct =transaction_cost_pct
         self.reward_scaling = reward_scaling
         self.state_space = state_space
+        self.stock_dim = stock_dim
         self.action_space = action_space
         self.tech_indicator_list = tech_indicator_list
         self.add_cash = add_cash
@@ -114,7 +115,7 @@ class portfolioAllocationEnv(gym.Env):
                 self.action_space = spaces.MultiDiscrete([self.dis_bins for _ in range(self.action_space)])
             else:
                 self.action_space = spaces.Box(low=0, high=1, shape = (self.action_space,))
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape = (self.state_space*(self.add_window+1), self.state_space))
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape = (self.state_space*(self.add_window+1), self.stock_dim))
         # load data from a pandas dataframe
         self.data = self.df.loc[self.day-self.add_window:self.day]
         if self.cov:
