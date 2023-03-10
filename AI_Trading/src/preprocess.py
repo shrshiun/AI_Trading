@@ -18,10 +18,12 @@ def create_dir():
                 print(f'no folder {path}')
                 pass
 
-def load_data(filePath, name):
+def load_data(filePath, name, adjClose=False):
     data = pd.read_csv(filePath)
-    # data = data.rename(columns={'Date': 'date', 'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close', 'Adj Close': 'adjcp', 'Volume': 'volume'})
-    data = data.rename(columns={'Date': 'date', 'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'closeOri', 'Adj Close': 'close', 'Volume': 'volume'})
+    if adjClose:
+        data = data.rename(columns={'Date': 'date', 'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'closeOri', 'Adj Close': 'close', 'Volume': 'volume'})
+    else:
+        data = data.rename(columns={'Date': 'date', 'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close', 'Adj Close': 'adjcp', 'Volume': 'volume'})
     data['tic'] = name
     return data
 
@@ -66,7 +68,7 @@ def covarianceMatrix(df):
     # add covariance matrix as states
     df=df.sort_values(['date','tic'],ignore_index=True)
     df.index = df.date.factorize()[0]
-    
+
     cov_list = []
     return_list = []
     return_lookback_list = []
@@ -76,13 +78,12 @@ def covarianceMatrix(df):
     for i in range(lookback,len(df.index.unique())):
         data_lookback = df.loc[i-lookback:i,:]
         price_lookback=data_lookback.pivot_table(index = 'date',columns = 'tic', values = 'close')
-        # price_lookback=data_lookback.pivot_table(index = 'date',columns = 'tic', values = 'adjcp')
         return_pct = price_lookback.pct_change().dropna()
         return_lookback = price_lookback.pct_change(periods=252).dropna()
         return_list.append(return_pct)
         return_lookback_list.append(return_lookback)
 
-        covs = return_pct.cov().values 
+        covs = return_pct.cov().values
         cov_list.append(covs)
     
     df_cov = pd.DataFrame({'date':df.date.unique()[lookback:],'cov_list':cov_list,'return_list':return_list, 'return_lookback':return_lookback_list})
@@ -90,20 +91,18 @@ def covarianceMatrix(df):
     df = df.sort_values(['date','tic']).reset_index(drop=True)
     return df
 
-def preprocess(trainStart, trainEnd, testStart, testEnd, window= 0, cov = True):
+def preprocess(trainStart, trainEnd, testStart, testEnd, window= 0, cov = True, adjClose = False):
     trainEnd = str((datetime.strptime(trainEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
     testEnd = str((datetime.strptime(testEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
-    data1 = featureEngineering(load_data(config.VNQ, 'VNQ'),trainStart, trainEnd,testEnd)
-    data2 = featureEngineering(load_data(config.TLT, 'TLT'),trainStart, trainEnd,testEnd)
-    data3 = featureEngineering(load_data(config.VTI, 'VTI'),trainStart, trainEnd,testEnd)
+    data1 = featureEngineering(load_data(config.VNQ, 'VNQ', adjClose=adjClose),trainStart, trainEnd,testEnd)
+    data2 = featureEngineering(load_data(config.TLT, 'TLT', adjClose=adjClose),trainStart, trainEnd,testEnd)
+    data3 = featureEngineering(load_data(config.VTI, 'VTI', adjClose=adjClose),trainStart, trainEnd,testEnd)
     data = pd.concat([data1, data2, data3])
     if cov:
         data_preprocessed = covarianceMatrix(data)
     else:
         data_preprocessed = data
     if window > 0:
-        # trainStart = str((datetime.strptime(trainStart, '%Y-%m-%d') - relativedelta(days=window)).date())
-        # testStart = str((datetime.strptime(testStart, '%Y-%m-%d') - relativedelta(days=window)).date())
         train = data_split(data_preprocessed, trainStart, trainEnd)
         test = data_split(data_preprocessed, testStart, testEnd)
         trainWindowDate = data1.loc[data1[data1.date==''.join(train.loc[0].date.unique())].index[0]-window].date
@@ -148,15 +147,6 @@ def customized_feature(data, rolling_n):
         """
         df = data.copy()
 
-        # df["open_normalized"] = (df.open-df.close)/df.close
-        # df["high_normalized"] = (df.high-df.close)/df.close
-        # df["low_normalized"] = (df.low-df.close)/df.close
-        # df['close_normalized'] = (df.close-df.close)/df.close
-
-        # df["open_normalized_return"] = df.open_normalized.pct_change(1)
-        # df["high_normalized_return"] = df.high_normalized.pct_change(1)
-        # df["low_normalized_return"] = df.low_normalized.pct_change(1)
-        # df["close_normalized_return"] = df.close_normalized.pct_change(1)
         # df["open_normalized_return"] = df.open.pct_change(1)
         # df["high_normalized_return"] = df.high.pct_change(1)
         # df["low_normalized_return"] = df.low.pct_change(1)
