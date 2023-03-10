@@ -686,11 +686,12 @@ class windowEnv(portfolioAllocationEnv):
             #load next state
             self.day += 1
             self.data = self.df.loc[self.day-config.ADD_WINDOW:self.day]
-            # self.covs = self.data['cov_list'].values[0]
-            # info = [self.data[tech].values.tolist() for tech in self.tech_indicator_list ]
+            if self.cov:
+                self.return_list = self.data.loc[self.day].return_list.to_list()[0]
+                self.covs = self.data['cov_list'].values[0]
+
             info = []
             if config.ADD_WINDOW > 0:
-                # close_t = self.df.loc[self.day-self.add_window,:].close.to_list() #close_0
                 close_t = self.df.loc[self.day,:].close.to_list() #close_t
                 for i in range(config.ADD_WINDOW,-1,-1):
                     info.append((self.df.loc[self.day-i].open/close_t).to_list())# open(closeNormalized)
@@ -701,7 +702,6 @@ class windowEnv(portfolioAllocationEnv):
                     info.append(self.df.loc[self.day-i,:].macds.to_list()) # macds
                     info.append(self.df.loc[self.day-i,:].macdh.to_list()) # macdh
 
-            # self.state =  np.append(np.array(self.covs), info, axis=0)
             self.state = info
             # calcualte portfolio return
             share = np.floor(weights * self.portfolio_value / last_day_memory.close.values)
