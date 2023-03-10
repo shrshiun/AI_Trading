@@ -37,7 +37,6 @@ INDICATORS = [
     "close_60_sma",
 ]
 
-ROLLING_N = 10
 # Capital
 INITIAL_AMOUNT = 1000000
 DF_ACTION_ORDER = ['date', 'TLT', 'VNQ', 'VTI']

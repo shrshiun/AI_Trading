@@ -10,6 +10,7 @@ import os.path
 from gym import spaces
 from stable_baselines3.common.vec_env import DummyVecEnv
 import math
+import torch
 
 class maxPortfolioReturnEnv(portfolioAllocationEnv):
     # reward: portfolio retrun (maxium)
@@ -276,13 +277,6 @@ class riskSensitiveEnv(portfolioAllocationEnv):
             weights = self.softmax_normalization(actions)
             weights = weights[:self.stock_dim]
             self.actions_memory.append(weights[:self.stock_dim])
-            if self.day > 10:
-                weights_mean_past = np.mean(self.actions_memory[-11:-1],axis=0)
-                weights_mean = np.mean(self.actions_memory[-10:],axis=0)
-            else:
-                weights_mean_past = np.mean(self.actions_memory[:-1],axis=0)
-                weights_mean = np.mean(self.actions_memory,axis=0)
-            self.weights_mean_memory.append(weights_mean_past)
             last_day_memory = self.data
             self.close_memory.append(last_day_memory.close.tolist())
             #load next state
@@ -372,13 +366,6 @@ class varianceEnv(portfolioAllocationEnv):
             weights = self.softmax_normalization(actions)
             weights = weights[:self.stock_dim]
             self.actions_memory.append(weights[:self.stock_dim])
-            if self.day > 10:
-                weights_mean_past = np.mean(self.actions_memory[-11:-1],axis=0)
-                weights_mean = np.mean(self.actions_memory[-10:],axis=0)
-            else:
-                weights_mean_past = np.mean(self.actions_memory[:-1],axis=0)
-                weights_mean = np.mean(self.actions_memory,axis=0)
-            self.weights_mean_memory.append(weights_mean_past)
             last_day_memory = self.data
             self.close_memory.append(last_day_memory.close.tolist())
             #load next state
@@ -598,13 +585,6 @@ class downsideRiskEnv(portfolioAllocationEnv):
             weights = self.softmax_normalization(actions)
             weights = weights[:self.stock_dim]
             self.actions_memory.append(weights[:self.stock_dim])
-            if self.day > 10:
-                weights_mean_past = np.mean(self.actions_memory[-11:-1],axis=0)
-                weights_mean = np.mean(self.actions_memory[-10:],axis=0)
-            else:
-                weights_mean_past = np.mean(self.actions_memory[:-1],axis=0)
-                weights_mean = np.mean(self.actions_memory,axis=0)
-            self.weights_mean_memory.append(weights_mean_past)
             last_day_memory = self.data
             self.close_memory.append(last_day_memory.close.tolist())
             #load next state
@@ -697,16 +677,10 @@ class windowEnv(portfolioAllocationEnv):
 
             return self.state, self.reward, self.terminal, {}
         else:
+            # weights = torch.nn.Softmax(actions)
             weights = self.softmax_normalization(actions)
-            weights = weights[:self.stock_dim]
-            self.actions_memory.append(weights[:self.stock_dim])
-            if self.day > config.ROLLING_N:
-                weights_mean_past = np.mean(self.actions_memory[-1*config.ROLLING_N-1:-1],axis=0)
-                weights_mean = np.mean(self.actions_memory[-1*config.ROLLING_N:],axis=0)
-            else:
-                weights_mean_past = np.mean(self.actions_memory[:-1],axis=0)
-                weights_mean = np.mean(self.actions_memory,axis=0)
-            self.weights_mean_memory.append(weights_mean_past)
+            # weights = weights[:self.stock_dim]
+            self.actions_memory.append(weights)
             last_day_memory = self.data.loc[self.day,:]
             self.close_memory.append(last_day_memory.close.tolist())
             #load next state
