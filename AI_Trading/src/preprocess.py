@@ -61,7 +61,7 @@ def featureEngineering(data,trainStart, trainEnd, testEnd):
     if 'close_60_sma' in data:
         data.close_60_sma = StandardScaler().fit(data[(data.date>=trainStart) & (data.date<trainEnd)].close_60_sma.values.reshape(-1,1)).transform(data.close_60_sma.values.reshape(-1,1))
 
-    data = customized_feature(data, config.ROLLING_N)
+    data = customized_feature(data)
     return data
 
 def covarianceMatrix(df):
@@ -94,9 +94,9 @@ def covarianceMatrix(df):
 def preprocess(trainStart, trainEnd, testStart, testEnd, window= 0, cov = True, adjClose = False):
     trainEnd = str((datetime.strptime(trainEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
     testEnd = str((datetime.strptime(testEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
-    data1 = featureEngineering(load_data(config.VNQ, 'VNQ', adjClose=adjClose),trainStart, trainEnd,testEnd)
-    data2 = featureEngineering(load_data(config.TLT, 'TLT', adjClose=adjClose),trainStart, trainEnd,testEnd)
-    data3 = featureEngineering(load_data(config.VTI, 'VTI', adjClose=adjClose),trainStart, trainEnd,testEnd)
+    data1 = featureEngineering(load_data(config.VNQ, 'VNQ', adjClose=adjClose), trainStart, trainEnd, testEnd)
+    data2 = featureEngineering(load_data(config.TLT, 'TLT', adjClose=adjClose), trainStart, trainEnd, testEnd)
+    data3 = featureEngineering(load_data(config.VTI, 'VTI', adjClose=adjClose), trainStart, trainEnd, testEnd)
     data = pd.concat([data1, data2, data3])
     if cov:
         data_preprocessed = covarianceMatrix(data)
@@ -139,7 +139,7 @@ def split_train_test_data():
         train.to_csv(data_path + '/train_' + str(i))
         test.to_csv(data_path + '/test_' + str(i))
 
-def customized_feature(data, rolling_n):
+def customized_feature(data):
         """
         add customize features (return of OHLC & mean of close)
         :param data: (df) pandas dataframe ; rolling_n:(n) int
