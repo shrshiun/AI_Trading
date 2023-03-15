@@ -110,9 +110,6 @@ def preprocess(trainStart, trainEnd, testStart, testEnd, window= 0, cov = True, 
         testWindowDate = data1.loc[data1[data1.date==''.join(test.loc[0].date.unique())].index[0]-window].date
         trainStart = trainWindowDate
         testStart = testWindowDate
-    print(f'macd max:{data_preprocessed.macd.max()},min:{data_preprocessed.macd.min()},median:{data_preprocessed.macd.median()},std:{data_preprocessed.macd.std()}')
-    print(f'macds max:{data_preprocessed.macds.max()},min:{data_preprocessed.macds.min()},median:{data_preprocessed.macds.median()},std:{data_preprocessed.macds.std()}')
-    print(f'macdh max:{data_preprocessed.macdh.max()},min:{data_preprocessed.macdh.min()},median:{data_preprocessed.macdh.median()},std:{data_preprocessed.macdh.std()}')
 
     train = data_split(data_preprocessed, trainStart, trainEnd)
     test = data_split(data_preprocessed, testStart, testEnd)

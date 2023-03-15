@@ -93,7 +93,6 @@ class FeatureEngineer:
         # add user defined feature
         if self.user_defined_feature:
             df = self.add_user_defined_feature(df)
-            print("Successfully added user defined features")
 
         # fill the missing values at the beginning and the end
         df = df.fillna(method="ffill").fillna(method="bfill")
@@ -176,22 +175,22 @@ class FeatureEngineer:
         # df['return_lag_4']=df.close.pct_change(5)
         return df
 
-    def add_vix(self, data):
-        """
-        add vix from yahoo finance
-        :param data: (df) pandas dataframe
-        :return: (df) pandas dataframe
-        """
-        df = data.copy()
-        df_vix = YahooDownloader(
-            start_date=df.date.min(), end_date=df.date.max(), ticker_list=["^VIX"]
-        ).fetch_data()
-        vix = df_vix[["date", "close"]]
-        vix.columns = ["date", "vix"]
+    # def add_vix(self, data):
+    #     """
+    #     add vix from yahoo finance
+    #     :param data: (df) pandas dataframe
+    #     :return: (df) pandas dataframe
+    #     """
+    #     df = data.copy()
+    #     df_vix = YahooDownloader(
+    #         start_date=df.date.min(), end_date=df.date.max(), ticker_list=["^VIX"]
+    #     ).fetch_data()
+    #     vix = df_vix[["date", "close"]]
+    #     vix.columns = ["date", "vix"]
 
-        df = df.merge(vix, on="date")
-        df = df.sort_values(["date", "tic"]).reset_index(drop=True)
-        return df
+    #     df = df.merge(vix, on="date")
+    #     df = df.sort_values(["date", "tic"]).reset_index(drop=True)
+    #     return df
 
     def add_turbulence(self, data):
         """
