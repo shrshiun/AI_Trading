@@ -1,4 +1,5 @@
-from finrl.meta.preprocessor.preprocessors import FeatureEngineer, data_split
+from AI_Trading.src.preprocessors import FeatureEngineer, data_split
+from AI_Trading.src import config
 from dateutil.relativedelta import relativedelta
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
@@ -6,7 +7,7 @@ from datetime import datetime
 
 import os
 import pandas as pd
-from AI_Trading.src import config
+
 
 def create_dir():
     dir_list = [config.TENSORBOARD_PATH, config.LOG_PATH, config.RESULTS_DIR, config.TRAINED_MODEL_PATH]

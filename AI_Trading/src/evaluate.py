@@ -1,7 +1,7 @@
 # from turtle import window_height
+from copy import deepcopy
 from pyfolio import timeseries
 import pyfolio
-from finrl.plot import backtest_stats, convert_daily_return_to_pyfolio_ts, get_daily_return
 import pandas as pd
 import numpy as np
 from datetime import datetime as dt
@@ -13,6 +13,22 @@ from pypfopt.efficient_frontier import EfficientFrontier
 from pypfopt import objective_functions
 from pypfopt import expected_returns
 from AI_Trading.src import config
+
+def convert_daily_return_to_pyfolio_ts(df):
+    strategy_ret = df.copy()
+    strategy_ret["date"] = pd.to_datetime(strategy_ret["date"])
+    strategy_ret.set_index("date", drop=False, inplace=True)
+    strategy_ret.index = strategy_ret.index.tz_localize("UTC")
+    del strategy_ret["date"]
+    return pd.Series(strategy_ret["daily_return"].values, index=strategy_ret.index)
+
+def get_daily_return(df, value_col_name="account_value"):
+    df = deepcopy(df)
+    df["daily_return"] = df[value_col_name].pct_change(1)
+    df["date"] = pd.to_datetime(df["date"])
+    df.set_index("date", inplace=True, drop=True)
+    df.index = df.index.tz_localize("UTC")
+    return pd.Series(df["daily_return"], index=df.index)
 
 def moving_average(actions, rolling_window=1) :
         ret = np.cumsum(actions, dtype=float)
@@ -198,7 +214,6 @@ def getMinVarianceActions(trade):
     column.extend(list(unique_tic))
     minVarianceActions_df.columns = column
     minVarianceActions_df = minVarianceActions_df.drop(columns=['portfolio_value'])
-    minVarianceActions_df = minVarianceActions_df.set_index('date')
     return minVarianceActions_df
 
 def backtestPlot(DRL_df, baseline_returns):
