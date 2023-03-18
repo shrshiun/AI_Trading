@@ -20,7 +20,7 @@ TEST_END_DATE = ['2008-12-31', '2009-12-31', '2010-12-31', '2011-12-31', '2012-1
 ## covariance
 LOOKBACK = 252
 ## window
-ADD_WINDOW = 29
+ADD_WINDOW = 19
 REWARD_ALPHA = -10
 
 ## stockstats technical indicator column names
