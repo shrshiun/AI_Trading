@@ -35,7 +35,7 @@ class windowEnv(portfolioAllocationEnv):
             mdd = ep.max_drawdown(pd.Series(self.portfolio_return_memory))
             sortino = ep.sortino_ratio(pd.Series(self.portfolio_return_memory))
             calmar = ep.calmar_ratio(pd.Series(self.portfolio_return_memory))
-            self.reward = sum(self.reward_memory)
+            reward = sum(self.reward_memory)
             if self.is_test_set == False:
                 df_training_weight = pd.DataFrame(self.actions_memory,columns =self.data.loc[self.day,:].tic.values)
                 df_training_weight['date'] = self.date_memory
@@ -44,11 +44,11 @@ class windowEnv(portfolioAllocationEnv):
 
                 if os.path.exists(self.training_log_path):
                     df_traing_log = pd.read_csv(self.training_log_path)
-                    df_traing_log.loc[len(df_traing_log)] = [self.portfolio_value, self.reward, mdd, sharpe, sortino, calmar]
+                    df_traing_log.loc[len(df_traing_log)] = [self.portfolio_value, reward, mdd, sharpe, sortino, calmar]
                     df_traing_log.to_csv(self.training_log_path, index= False)
                 else:
                     df_traing_log = pd.DataFrame({'portfolio value':[self.portfolio_value],
-                                                  'reward':[self.reward],
+                                                  'reward':[reward],
                                                   'mdd': [mdd],
                                                   'sharpe': [sharpe],
                                                   'sortino': [sortino],
@@ -113,9 +113,9 @@ class windowEnv(portfolioAllocationEnv):
                 calmar = 0 if np.isnan(calmar) else calmar
                 self.reward = (self.portfolio_return + self.alpha * calmar) # alpha > 0
             elif self.reward_type == 'mddConcern':
-                self.reward = (self.portfolio_return + self.alpha * mdd) #alpha > 0
+                self.reward = (self.portfolio_return + self.alpha * mdd) #alpha < 0
             elif self.reward_type == 'variance':
-                self.reward = abs(self.alpha * var) # alpha < 0
+                self.reward = self.alpha * var # alpha < 0
             else:
                 print('no match reward')
             self.reward_memory.append(self.reward)
@@ -171,7 +171,7 @@ class blackLittermanEnv(portfolioAllocationEnv):
             prices = self.df.set_index('date')
             pvt = prices.pivot_table(values='close', index='date',columns='tic')
             # weights = self.softmax_normalization(actions)
-            print(f'{self.day}: {actions}')
+            # print(f'{self.day}: {actions}')
             weights= blackLitterman(self.return_list, actions,pvt)
             weights = weights[:self.stock_dim]
             self.actions_memory.append(weights[:self.stock_dim])
@@ -180,8 +180,9 @@ class blackLittermanEnv(portfolioAllocationEnv):
             #load next state
             self.day += 1
             self.data = self.df.loc[self.day-config.ADD_WINDOW:self.day]
-            self.return_list = self.df.loc[self.day].return_list.to_list()[0]
-            # self.covs = self.data['cov_list'].values[0]
+            if self.cov:
+                self.return_list = self.data.loc[self.day].return_list.to_list()[0]
+                self.covs = self.data['cov_list'].values[0]
             info = []
             if config.ADD_WINDOW > 0:
                 # close_t = self.df.loc[self.day-self.add_window,:].close.to_list() #close_0
