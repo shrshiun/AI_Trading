@@ -11,7 +11,7 @@ PPO_PARAMS = {
     "batch_size": 64,
     "seed": 0
 }
-DDPG_PARAMS = {"batch_size": 128, "buffer_size": 50000, "learning_rate": 0.00002,"seed": 0, "device":torch.device("cpu")}
+DDPG_PARAMS = {"batch_size": 128, "buffer_size": 50000, "learning_rate": 0.0002,"seed": 0, "device":torch.device("cpu")}
 TD3_PARAMS = {
     "batch_size": 100,
     "buffer_size": 1000000,
