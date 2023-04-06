@@ -55,6 +55,7 @@ def training(exp: str, reward: str, cov: bool, episode: int):
             "action_space": len(train.tic.unique()), 
             "reward_scaling": 1e-4,
             "add_cash": False,
+            "lookback":config.LOOKBACK,
             "alpha": config.REWARD_ALPHA,
             "add_window": config.ADD_WINDOW,
             "cov": cov,
