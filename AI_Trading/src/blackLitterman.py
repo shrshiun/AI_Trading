@@ -1,3 +1,4 @@
+from distutils.command.config import config
 from pypfopt import objective_functions
 from pypfopt import expected_returns
 from pypfopt import BlackLittermanModel, plotting, risk_models
@@ -10,7 +11,7 @@ def blackLitterman(return_list, actions, pvt, weights_yesterday):
     view_dict = dict(zip(tics ,actions))
     cov = return_list.cov()
     # cov = risk_models.CovarianceShrinkage(pvt).ledoit_wolf()
-    avg_returns = expected_returns.mean_historical_return(cov, returns_data=True, compounding=True, frequency=252)
+    avg_returns = expected_returns.mean_historical_return(return_list, returns_data=True, compounding=True, frequency=20)
     bl = BlackLittermanModel(cov, pi=avg_returns, absolute_views=view_dict)
     # print('avg:', avg_returns)
     # print('view:', view_dict)
@@ -24,9 +25,11 @@ def blackLitterman(return_list, actions, pvt, weights_yesterday):
     try:
         weights = ef.max_sharpe()
         weights = ef.clean_weights().values()
+        convex = 0
     except:
         print('nonconvex:',list(ret_bl))
         weights = weights_yesterday
+        convex =1
     # #2
     # raw_ef = ef.nonconvex_objective(
     #     objective_functions.sharpe_ratio,
@@ -41,4 +44,4 @@ def blackLitterman(return_list, actions, pvt, weights_yesterday):
     #         weights_sum_to_one=True,
     #     )
     
-    return list(weights), list(avg_returns), list(ret_bl)
+    return list(weights), list(avg_returns), list(ret_bl), convex

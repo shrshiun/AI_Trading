@@ -57,6 +57,7 @@ class windowEnv(portfolioAllocationEnv):
 
             return self.state, self.reward, self.terminal, {}
         else:
+            # print(actions)
             weights = self.softmax_normalization(actions)
             weights = weights[:self.stock_dim]
             self.actions_memory.append(weights)
@@ -216,6 +217,7 @@ class blackLittermanEnv(portfolioAllocationEnv):
         self.date_memory=[self.data.loc[self.day,:].date.unique()[0]]
         self.reward_memory = [0]
         self.mdd_memory = [0]
+        self.convex_memory = [0]
 
         self.is_test_set = is_test_set
         self.training_log_path = training_log_path
@@ -263,6 +265,7 @@ class blackLittermanEnv(portfolioAllocationEnv):
         self.share_memory=[[0]*self.stock_dim]
         self.reward_memory = [0]
         self.mdd_memory = [0]
+        self.convex_memory = [0]
 
         self.close_memory = []
         self.close_mean_memory = [[0]*self.stock_dim]
@@ -305,6 +308,7 @@ class blackLittermanEnv(portfolioAllocationEnv):
             if self.is_test_set == False:
                 df_training_weight = pd.DataFrame(self.actions_memory,columns =self.data.loc[self.day,:].tic.values)
                 df_training_weight['date'] = self.date_memory
+                df_training_weight['convex'] = self.convex_memory
                 df_training_weight['action'] = self.modelAction_memory
                 df_training_weight['prior'] = self.prior_memory
                 df_training_weight['post'] = self.post_memory
@@ -328,7 +332,8 @@ class blackLittermanEnv(portfolioAllocationEnv):
         else:
             prices = self.df.set_index('date')
             pvt = prices.pivot_table(values='close', index='date',columns='tic')
-            weights, prior, post= blackLitterman(self.return_list, actions, pvt, self.actions_memory[-1])
+            weights, prior, post, convex = blackLitterman(self.return_list, actions, pvt, self.actions_memory[-1])
+            self.convex_memory.append(convex)
             weights = weights[:self.stock_dim]
             self.modelAction_memory.append(actions)
             self.prior_memory.append(prior)

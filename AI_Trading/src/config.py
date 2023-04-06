@@ -18,10 +18,10 @@ TEST_END_DATE = ['2008-12-31', '2009-12-31', '2010-12-31', '2011-12-31', '2012-1
 
 # Preprocess
 ## covariance
-LOOKBACK = 252
+LOOKBACK = 20
 ## window
 ADD_WINDOW = 19
-REWARD_ALPHA = -10
+REWARD_ALPHA = 1
 
 ## stockstats technical indicator column names
 # check https://pypi.org/project/stockstats/ for different names
