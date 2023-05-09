@@ -3,6 +3,8 @@ from pypfopt import objective_functions
 from pypfopt import expected_returns
 from pypfopt import BlackLittermanModel, plotting, risk_models
 from pypfopt import EfficientFrontier, objective_functions
+import numpy as np
+
 def new_objective(w, mu, S):
     return objective_functions.sharpe_ratio(w, mu, S) + objective_functions.L2_reg(w)
 
@@ -30,12 +32,20 @@ def blackLitterman(return_list, actions, pvt, weights_yesterday):
         print('nonconvex:',list(ret_bl))
         weights = weights_yesterday
         convex =1
+
     # #2
-    # raw_ef = ef.nonconvex_objective(
-    #     objective_functions.sharpe_ratio,
-    #     objective_args=(ef.expected_returns, ef.cov_matrix),
-    #     weights_sum_to_one=True
-    # )
+    # try:
+    #     weights = ef.nonconvex_objective(
+    #         objective_functions.sharpe_ratio,
+    #         objective_args=(ef.expected_returns, ef.cov_matrix),
+    #         weights_sum_to_one=True
+    #     )
+    #     weights = ef.clean_weights().values()
+    #     convex = 0
+    # except:
+    #     print('nonconvex:',list(ret_bl))
+    #     weights = weights_yesterday
+    #     convex =1
 
     # #3
     # raw_ef = ef.nonconvex_objective(

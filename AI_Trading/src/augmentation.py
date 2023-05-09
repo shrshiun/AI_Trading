@@ -12,6 +12,11 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 import math
 import torch
 
+def softmax_normalization(actions):
+        numerator = np.exp(actions)
+        denominator = np.sum(np.exp(actions))
+        softmax_output = numerator/denominator
+        return softmax_output
 
 class windowEnv(portfolioAllocationEnv):
     def step(self, actions):
@@ -114,7 +119,7 @@ class windowEnv(portfolioAllocationEnv):
                 calmar = 10 if np.isnan(calmar) else calmar # when mdd = 0 -> calmar = inf => set calmar greater
                 self.reward = (self.portfolio_return + self.alpha * calmar) # alpha > 0
             elif self.reward_type == 'mddConcern':
-                self.reward = (self.portfolio_return + self.alpha * mdd) #alpha < 0
+                self.reward = (self.portfolio_return + self.alpha * mdd) #alpha > 0
             elif self.reward_type == 'variance':
                 self.reward = self.alpha * var # alpha < 0
             else:
@@ -197,7 +202,7 @@ class blackLittermanEnv(portfolioAllocationEnv):
                 info.append(self.df.loc[self.day-i,:].macds.to_list()) # macds
                 info.append(self.df.loc[self.day-i,:].macdh.to_list()) # macdh
 
-        # info.append(np.array(self.covs))
+        # self.state =  np.append(np.array(self.covs), info, axis=0)
         self.state = info
         self.terminal = False
         self.turbulence_threshold = turbulence_threshold
@@ -209,7 +214,7 @@ class blackLittermanEnv(portfolioAllocationEnv):
         self.portfolio_return = 0
         self.portfolio_return_memory = [0]
         self.negative_portfolio_return_memory = []
-        self.actions_memory=[[1/self.stock_dim]*self.stock_dim]
+        self.actions_memory=[[0]*self.stock_dim]
         self.modelAction_memory=[[0]*self.stock_dim]
         self.prior_memory=[[0]*self.stock_dim]
         self.post_memory=[[0]*self.stock_dim]
@@ -257,7 +262,7 @@ class blackLittermanEnv(portfolioAllocationEnv):
         self.terminal = False
         self.portfolio_return_memory = [0]
         self.negative_portfolio_return_memory = []
-        self.actions_memory=[[1/self.stock_dim]*self.stock_dim]
+        self.actions_memory=[[0]*self.stock_dim]
         self.modelAction_memory = [[0]*self.stock_dim]
         self.prior_memory=[[0]*self.stock_dim]
         self.post_memory=[[0]*self.stock_dim]
@@ -332,6 +337,7 @@ class blackLittermanEnv(portfolioAllocationEnv):
         else:
             prices = self.df.set_index('date')
             pvt = prices.pivot_table(values='close', index='date',columns='tic')
+            # actions = softmax_normalization(actions)
             weights, prior, post, convex = blackLitterman(self.return_list, actions, pvt, self.actions_memory[-1])
             self.convex_memory.append(convex)
             weights = weights[:self.stock_dim]
@@ -381,6 +387,8 @@ class blackLittermanEnv(portfolioAllocationEnv):
             self.date_memory.append(self.data.loc[self.day,:].date.unique()[0])
             self.asset_memory.append(new_portfolio_value)
 
-            self.reward = self.portfolio_return # log-return
+            # self.reward = self.portfolio_return
+            self.reward = self.portfolio_return + config.REWARD_ALPHA * trans_cost
+
             self.reward_memory.append(self.reward)
         return self.state, self.reward, self.terminal, {}

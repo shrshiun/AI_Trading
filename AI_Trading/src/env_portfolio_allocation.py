@@ -146,7 +146,7 @@ class portfolioAllocationEnv(gym.Env):
         self.portfolio_return = 0
         self.portfolio_return_memory = [0]
         self.negative_portfolio_return_memory = []
-        self.actions_memory=[[1/self.stock_dim]*self.stock_dim]
+        self.actions_memory=[[0]*self.stock_dim]
         self.modelAction_memory=[[0]*self.stock_dim]
         self.prior_memory=[[0]*self.stock_dim]
         self.post_memory=[[0]*self.stock_dim]
@@ -296,7 +296,7 @@ class portfolioAllocationEnv(gym.Env):
         self.terminal = False 
         self.portfolio_return_memory = [0]
         self.negative_portfolio_return_memory = []
-        self.actions_memory=[[1/self.stock_dim]*self.stock_dim]
+        self.actions_memory=[[0]*self.stock_dim]
         self.modelAction_memory = [[0]*self.stock_dim]
         self.prior_memory=[[0]*self.stock_dim]
         self.post_memory=[[0]*self.stock_dim]
