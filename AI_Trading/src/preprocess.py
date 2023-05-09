@@ -29,6 +29,7 @@ def load_data(filePath, name, adjClose=False):
     return data
 
 def featureEngineering(data,trainStart, trainEnd, testEnd):
+
     fe = FeatureEngineer(
                     tech_indicator_list=config.INDICATORS,
                     use_technical_indicator=True,
@@ -92,7 +93,7 @@ def covarianceMatrix(df):
     df = df.sort_values(['date','tic']).reset_index(drop=True)
     return df
 
-def preprocess(trainStart, trainEnd, testStart, testEnd, window= 0, cov = True, adjClose = False):
+def preprocess(trainStart, trainEnd, testStart, testEnd, window= 0, cov = True, adjClose = False, val=False):
     trainEnd = str((datetime.strptime(trainEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
     testEnd = str((datetime.strptime(testEnd, '%Y-%m-%d') + relativedelta(days=1)).date())
     data1 = featureEngineering(load_data(config.VNQ, 'VNQ', adjClose=adjClose), trainStart, trainEnd, testEnd)
@@ -113,7 +114,14 @@ def preprocess(trainStart, trainEnd, testStart, testEnd, window= 0, cov = True, 
 
     train = data_split(data_preprocessed, trainStart, trainEnd)
     test = data_split(data_preprocessed, testStart, testEnd)
-    return train,test
+
+    if val:
+        val = train[-1*config.VAL_DAY*3:]
+        train = train[:-1*config.VAL_DAY*3]
+        val.index = val['date'].factorize()[0]
+        return train,val,test
+    else:
+        return train,test
 
 def split_train_test_data():
     data1 = load_data(config.VNQ, 'VNQ')

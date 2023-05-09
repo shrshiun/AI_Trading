@@ -13,6 +13,7 @@ from pypfopt.efficient_frontier import EfficientFrontier
 from pypfopt import objective_functions
 from pypfopt import expected_returns
 from AI_Trading.src import config
+import operator
 
 def convert_daily_return_to_pyfolio_ts(df):
     strategy_ret = df.copy()
@@ -64,7 +65,7 @@ def computeReturns(actions, trade, transCostRate=0, change_threshold=0, rebalanc
                     weight_yesterday = np.array(share_yesterday[t]) * np.array(close_yesterday[t]) / np.array(portfolio_value[index-1])
                 weight_change += abs(weight_today - weight_yesterday)
                 weight.append(actions[str(tic)].loc[actions['date']==all_date[index]].values)
-            
+
             if rebalance and (hold_count>= config.REBALANCE_DURATION):
                 share = np.floor(np.array(weight) * np.array(portfolio_value[index-1]) / np.array(close_yesterday))
                 change = True
@@ -98,6 +99,16 @@ def computeReturns(actions, trade, transCostRate=0, change_threshold=0, rebalanc
     df_returns['date'] = all_date
     print(f'{change_threshold}: {count}')
     return df_returns, df_portfolio_value
+
+def choseThreshold(actions, val):
+    change_threshold_list = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    dic_portfolio_value = {}
+    for i in change_threshold_list:
+        df_returns, df_portfolio_value = computeReturns(actions, val, transCostRate=0.001, change_threshold=i)
+        dic_portfolio_value[i] = df_portfolio_value.iloc[-1].portfolio_value
+    best_threshold = max(dic_portfolio_value, key = dic_portfolio_value.get)
+
+    return best_threshold
 
 def getStats(df_daily_return):
     pyfolio_ts = convert_daily_return_to_pyfolio_ts(df_daily_return)
