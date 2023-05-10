@@ -6,9 +6,9 @@ TRAINED_MODEL_PATH = './AI_Trading/trained_models/'
 EVALUATE_RESULT_PATH = './AI_Trading/evaluate_result/'
 
 ## date format: '%Y-%m-%d'
-VTI = './AI_Trading/data/VTI_miss.csv'
-VNQ = './AI_Trading/data/VNQ_miss.csv'
-TLT = './AI_Trading/data/TLT_miss.csv'
+VTI = './AI_Trading/data/VTI.csv'
+VNQ = './AI_Trading/data/VNQ.csv'
+TLT = './AI_Trading/data/TLT.csv'
 
 TRAIN_START_DATE = ['2005-09-28', '2006-01-01', '2007-01-01', '2008-01-01', '2009-01-01', '2010-01-01', '2011-01-01', '2012-01-01', '2013-01-01', '2014-01-01', '2015-01-01', '2016-01-01', '2017-01-01', '2018-01-01', '2019-01-01']
 TRAIN_END_DATE = ['2007-12-31', '2008-12-31', '2009-12-31', '2010-12-31', '2011-12-31', '2012-12-31', '2013-12-31', '2014-12-31', '2015-12-31', '2016-12-31', '2017-12-31', '2018-12-31', '2019-12-31', '2020-12-31', '2021-12-31']

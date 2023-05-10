@@ -87,7 +87,7 @@ class windowEnv(portfolioAllocationEnv):
                     info.append(self.df.loc[self.day-i,:].macds.to_list()) # macds
                     info.append(self.df.loc[self.day-i,:].macdh.to_list()) # macdh
 
-            self.state = info
+            # self.state = np.array(info).flatten()
             # calcualte portfolio return
             share = np.floor(weights * self.portfolio_value / last_day_memory.close.values)
             self.share_memory.append(share)
@@ -106,6 +106,9 @@ class windowEnv(portfolioAllocationEnv):
             self.portfolio_return_memory.append(self.portfolio_return)
             self.date_memory.append(self.data.loc[self.day,:].date.unique()[0])
             self.asset_memory.append(new_portfolio_value)
+
+            info_arr = np.array(info)
+            self.state = np.append(info_arr.flatten(),0)
 
             var = np.var(self.portfolio_return_memory)
             calmar = ep.calmar_ratio(pd.Series(self.portfolio_return_memory))
