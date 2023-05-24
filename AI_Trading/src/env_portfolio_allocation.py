@@ -117,7 +117,7 @@ class portfolioAllocationEnv(gym.Env):
                 self.action_space = spaces.MultiDiscrete([self.dis_bins for _ in range(self.action_space)])
             else:
                 self.action_space = spaces.Box(low=0, high=1, shape = (self.action_space,))
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape = ((self.state_space*(self.add_window+1)*self.stock_dim)+1,))
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape = ((self.state_space*(self.add_window+1)*self.stock_dim),))
         # load data from a pandas dataframe
         self.data = self.df.loc[self.day-self.add_window:self.day]
         if self.cov:
@@ -136,7 +136,9 @@ class portfolioAllocationEnv(gym.Env):
                 info.append(self.df.loc[self.day-i,:].macdh.to_list()) # macdh
 
         info_arr = np.array(info)
-        self.state = np.append(info_arr.flatten(),0)
+        # self.state = np.append(info_arr.flatten(),0)
+        self.state = info_arr.flatten()
+
         self.terminal = False
         self.turbulence_threshold = turbulence_threshold
         self.portfolio_value = self.initial_amount
@@ -293,7 +295,9 @@ class portfolioAllocationEnv(gym.Env):
                 info.append(self.df.loc[self.day-i,:].macdh.to_list()) # macdh
 
         info_arr = np.array(info)
-        self.state = np.append(info_arr.flatten(),0)
+        # self.state = np.append(info_arr.flatten(),0)
+        self.state = info_arr.flatten()
+
         self.portfolio_value = self.initial_amount
         self.terminal = False 
         self.portfolio_return_memory = [0]

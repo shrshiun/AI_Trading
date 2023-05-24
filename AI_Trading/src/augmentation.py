@@ -44,6 +44,7 @@ class windowEnv(portfolioAllocationEnv):
             if self.is_test_set == False:
                 df_training_weight = pd.DataFrame(self.actions_memory,columns =self.data.loc[self.day,:].tic.values)
                 df_training_weight['date'] = self.date_memory
+                df_training_weight['action'] = self.modelAction_memory
                 df_training_weight = df_training_weight.set_index('date')
                 df_training_weight.to_csv(self.training_weight_path)
 
@@ -68,6 +69,7 @@ class windowEnv(portfolioAllocationEnv):
             self.actions_memory.append(weights)
             last_day_memory = self.data.loc[self.day,:]
             self.close_memory.append(last_day_memory.close.tolist())
+            self.modelAction_memory.append(actions)
             #load next state
             self.day += 1
             self.data = self.df.loc[self.day-config.ADD_WINDOW:self.day]
@@ -87,7 +89,6 @@ class windowEnv(portfolioAllocationEnv):
                     info.append(self.df.loc[self.day-i,:].macds.to_list()) # macds
                     info.append(self.df.loc[self.day-i,:].macdh.to_list()) # macdh
 
-            # self.state = np.array(info).flatten()
             # calcualte portfolio return
             share = np.floor(weights * self.portfolio_value / last_day_memory.close.values)
             self.share_memory.append(share)
@@ -108,7 +109,8 @@ class windowEnv(portfolioAllocationEnv):
             self.asset_memory.append(new_portfolio_value)
 
             info_arr = np.array(info)
-            self.state = np.append(info_arr.flatten(),0)
+            # self.state = np.append(info_arr.flatten(), self.portfolio_return)
+            self.state = info_arr.flatten()
 
             var = np.var(self.portfolio_return_memory)
             calmar = ep.calmar_ratio(pd.Series(self.portfolio_return_memory))
@@ -390,8 +392,8 @@ class blackLittermanEnv(portfolioAllocationEnv):
             self.date_memory.append(self.data.loc[self.day,:].date.unique()[0])
             self.asset_memory.append(new_portfolio_value)
 
-            # self.reward = self.portfolio_return
-            self.reward = self.portfolio_return + config.REWARD_ALPHA * trans_cost
+            self.reward = self.portfolio_return
+            # self.reward = self.portfolio_return + config.REWARD_ALPHA * trans_cost
 
             self.reward_memory.append(self.reward)
         return self.state, self.reward, self.terminal, {}
