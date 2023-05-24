@@ -94,7 +94,7 @@ def training(exp: str, reward: str, cov: bool, episode: int):
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-x', '--experiment', type=str, required=True)
-    parser.add_argument('-r', '--reward', type=str, default=80)
+    parser.add_argument('-r', '--reward', type=str, default='portfolioReturn')
     parser.add_argument('-c', '--cov', type=bool, default=False)
     parser.add_argument('-e', '--episode', type=int, default=80)
 
