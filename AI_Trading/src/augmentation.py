@@ -18,6 +18,26 @@ def softmax_normalization(actions):
         softmax_output = numerator/denominator
         return softmax_output
 
+def computeReward(model_dict, benchmark_dict, all_win=False):
+    reward = 0
+    alpha_pv = config.ALPHA_DICT['pv'] if model_dict['pv'] > benchmark_dict['pv'] else -1*config.ALPHA_DICT['pv']
+    alpha_mdd = config.ALPHA_DICT['mdd'] if model_dict['mdd'] < benchmark_dict['mdd'] else -1*config.ALPHA_DICT['mdd']
+    alpha_calmar = config.ALPHA_DICT['calmar'] if model_dict['calmar'] > benchmark_dict['calmar'] else -1*config.ALPHA_DICT['calmar']
+    alpha_sharpe = config.ALPHA_DICT['sharpe'] if model_dict['sharpe'] > benchmark_dict['sharpe'] else -1*config.ALPHA_DICT['sharpe']
+    alpha_sortino = config.ALPHA_DICT['sortino'] if model_dict['sortino'] > benchmark_dict['sortino'] else -1*config.ALPHA_DICT['sortino']
+    alpha_var = config.ALPHA_DICT['var'] if model_dict['var'] < benchmark_dict['var'] else -1*config.ALPHA_DICT['var']
+    reward = alpha_pv * config.REWARD_DICT['pv'] + alpha_mdd * config.REWARD_DICT['mdd']+ alpha_calmar * config.REWARD_DICT['calmar'] + alpha_sharpe * config.REWARD_DICT['sharpe'] + alpha_sortino * config.REWARD_DICT['sortino'] + alpha_var * config.REWARD_DICT['var']
+
+    # 希望全贏(全贏->2 ; 贏1-> -1; 全輸->-2)，先比 pv&mdd
+    if all_win:
+        if (alpha_pv+alpha_mdd)==2:
+            reward = 2
+        elif (alpha_pv+alpha_mdd)==0:
+            reward = -1
+        else:
+            reward = -2
+    return reward
+
 class windowEnv(portfolioAllocationEnv):
     def step(self, actions):
         self.terminal = self.day >= len(self.df.index.unique())-1
@@ -396,4 +416,118 @@ class blackLittermanEnv(portfolioAllocationEnv):
             # self.reward = self.portfolio_return + config.REWARD_ALPHA * trans_cost
 
             self.reward_memory.append(self.reward)
+        return self.state, self.reward, self.terminal, {}
+
+class imitateEnv(portfolioAllocationEnv):
+    def step(self, actions):
+        self.terminal = self.day >= len(self.df.index.unique())-1
+
+        if self.terminal:
+            df = pd.DataFrame(self.portfolio_return_memory)
+            df.columns = ['daily_return']
+            print("=================================")
+            print("begin_total_asset:{}".format(self.asset_memory[0]))
+            print("end_total_asset:{}".format(self.portfolio_value))
+
+            df_daily_return = pd.DataFrame(self.portfolio_return_memory)
+            df_daily_return.columns = ['daily_return']
+
+            if df_daily_return['daily_return'].std() !=0:
+              sharpe = (252**0.5)*df_daily_return['daily_return'].mean()/ \
+                       df_daily_return['daily_return'].std()
+              print("Sharpe: ",sharpe)
+            print("=================================")
+            mdd = ep.max_drawdown(pd.Series(self.portfolio_return_memory))
+            sortino = ep.sortino_ratio(pd.Series(self.portfolio_return_memory))
+            calmar = ep.calmar_ratio(pd.Series(self.portfolio_return_memory))
+            reward = sum(self.reward_memory)
+            if self.is_test_set == False:
+                df_training_weight = pd.DataFrame(self.actions_memory,columns =self.data.loc[self.day,:].tic.values)
+                df_training_weight['date'] = self.date_memory
+                df_training_weight['action'] = self.modelAction_memory
+                df_training_weight['reward'] = self.reward_memory
+                df_training_weight = df_training_weight.set_index('date')
+                df_training_weight.to_csv(self.training_weight_path)
+
+                if os.path.exists(self.training_log_path):
+                    df_traing_log = pd.read_csv(self.training_log_path)
+                    df_traing_log.loc[len(df_traing_log)] = [self.portfolio_value, reward, mdd, sharpe, sortino, calmar]
+                    df_traing_log.to_csv(self.training_log_path, index= False)
+                else:
+                    df_traing_log = pd.DataFrame({'portfolio value':[self.portfolio_value],
+                                                  'reward':[reward],
+                                                  'mdd': [mdd],
+                                                  'sharpe': [sharpe],
+                                                  'sortino': [sortino],
+                                                  'calmar':[calmar]})
+                    df_traing_log.to_csv(self.training_log_path, index= False)
+
+            return self.state, self.reward, self.terminal, {}
+        else:
+            weights = self.softmax_normalization(actions)
+            weights = weights[:self.stock_dim]
+            self.actions_memory.append(weights)
+            last_day_memory = self.data.loc[self.day,:]
+            self.close_memory.append(last_day_memory.close.tolist())
+            self.modelAction_memory.append(actions)
+            #load next state
+            self.day += 1
+            self.data = self.df.loc[self.day-config.ADD_WINDOW:self.day]
+            if self.cov:
+                self.return_list = self.data.loc[self.day].return_list.to_list()[0]
+                self.covs = self.data['cov_list'].values[0]
+
+            info = []
+            if config.ADD_WINDOW > 0:
+                close_t = self.df.loc[self.day,:].close.to_list() #close_t
+                for i in range(config.ADD_WINDOW,-1,-1):
+                    info.append((self.df.loc[self.day-i].open/close_t).to_list())# open(closeNormalized)
+                    info.append((self.df.loc[self.day-i].high/close_t).to_list()) # high(closeNormalized)
+                    info.append((self.df.loc[self.day-i].low/close_t).to_list()) # low(closeNormalizedd)
+                    info.append((self.df.loc[self.day-i].close/close_t).to_list()) # close(closeNormalized)
+                    info.append(self.df.loc[self.day-i,:].macd.to_list()) # macd
+                    info.append(self.df.loc[self.day-i,:].macds.to_list()) # macds
+                    info.append(self.df.loc[self.day-i,:].macdh.to_list()) # macdh
+
+            # calcualte portfolio return
+            share = np.floor(weights * self.portfolio_value / last_day_memory.close.values)
+            self.share_memory.append(share)
+            cash = self.portfolio_value - sum(share * last_day_memory.close.values)
+
+            if self.transaction_cost_pct > 0:
+                share_change = np.sum(abs(np.array(share) - np.array(self.share_memory[self.day-config.ADD_WINDOW-1])) * np.array(last_day_memory.close.values))
+                trans_cost = share_change * self.transaction_cost_pct
+            else:
+                trans_cost = 0
+            # update portfolio value
+            new_portfolio_value = sum(share * self.data.loc[self.day,:].close.values) + cash - trans_cost
+            self.portfolio_return = np.log(new_portfolio_value / self.portfolio_value)
+            self.portfolio_value = new_portfolio_value
+            # save into memory
+            self.portfolio_return_memory.append(self.portfolio_return)
+            self.date_memory.append(self.data.loc[self.day,:].date.unique()[0])
+            self.asset_memory.append(new_portfolio_value)
+
+            info_arr = np.array(info)
+            # self.state = np.append(info_arr.flatten(), self.portfolio_return)
+            self.state = info_arr.flatten()
+
+            self.model_dict['pv'] = self.portfolio_return
+            self.model_dict['mdd'] = ep.max_drawdown(pd.Series(self.portfolio_return_memory[-1*(config.ADD_WINDOW+1):]))
+            self.model_dict['calmar'] = ep.calmar_ratio(pd.Series(self.portfolio_return_memory[-1*(config.ADD_WINDOW+1):]))
+            self.model_dict['sharpe'] = ep.sharpe_ratio(pd.Series(self.portfolio_return_memory))
+            self.model_dict['sortino'] = ep.sortino_ratio(pd.Series(self.portfolio_return_memory))
+            self.model_dict['var'] = np.var(self.portfolio_return_memory)
+
+            imitate_benchmark_return_memory = self.imitate_benchmark_return[config.ADD_WINDOW:self.day+1]
+            self.benchmark_dict['pv'] = np.log(self.imitate_benchmark_value.iloc[self.day-config.ADD_WINDOW]/self.imitate_benchmark_value.iloc[self.day-config.ADD_WINDOW-1])
+            self.benchmark_dict['mdd'] = ep.max_drawdown(pd.Series(imitate_benchmark_return_memory[-1*(config.ADD_WINDOW+1):]))
+            self.benchmark_dict['calmar'] = ep.calmar_ratio(pd.Series(imitate_benchmark_return_memory[-1*(config.ADD_WINDOW+1):]))
+            self.benchmark_dict['sharpe'] = ep.sharpe_ratio(pd.Series(imitate_benchmark_return_memory))
+            self.benchmark_dict['sortino'] = ep.sortino_ratio(pd.Series(imitate_benchmark_return_memory))
+            self.benchmark_dict['var'] = np.var(imitate_benchmark_return_memory)
+
+            self.reward = computeReward(self.model_dict, self.benchmark_dict, all_win=True)
+            self.reward_memory.append(self.reward)
+
         return self.state, self.reward, self.terminal, {}

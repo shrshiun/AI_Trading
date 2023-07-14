@@ -20,7 +20,7 @@ TEST_END_DATE = ['2008-12-31', '2009-12-31', '2010-12-31', '2011-12-31', '2012-1
 LOOKBACK = 20
 ## window
 ADD_WINDOW = 19
-REWARD_ALPHA = -0.000001
+REWARD_ALPHA = 1
 # validation
 VAL_DAY = 125
 
@@ -43,3 +43,21 @@ INDICATORS = [
 INITIAL_AMOUNT = 1000000
 DF_ACTION_ORDER = ['date', 'TLT', 'VNQ', 'VTI']
 REBALANCE_DURATION = 251
+
+# reward
+REWARD_DICT = {
+    'pv': 1,
+    'mdd': 1,
+    'calmar': 1,
+    'sharpe': 1,
+    'sortino': 1,
+    'var': 1
+}
+ALPHA_DICT = {
+    'pv': 1,
+    'mdd': 1,
+    'calmar': 1,
+    'sharpe': 0,
+    'sortino': 0,
+    'var': 0
+}

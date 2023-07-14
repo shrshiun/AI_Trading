@@ -9,6 +9,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from stable_baselines3.common.vec_env import DummyVecEnv
 from AI_Trading.src import config
+from AI_Trading.src.evaluate import *
 import empyrical as ep
 import os.path
 
@@ -84,10 +85,12 @@ class portfolioAllocationEnv(gym.Env):
                 dis_bins = None,
                 dis_type = None,
                 cov = False,
-                reward_type = 'portfolioReturn'):
+                reward_type = 'portfolioReturn',
+                imitate_benchmark = None):
         self.dis_bins = dis_bins
         self.dis_type = dis_type
         self.reward_type = reward_type
+        self.imitate_benchmark = imitate_benchmark
         self.cov = cov
         self.add_window = add_window
         self.day = self.add_window
@@ -99,7 +102,6 @@ class portfolioAllocationEnv(gym.Env):
         self.transaction_cost_pct =transaction_cost_pct
         self.reward_scaling = reward_scaling
         self.state_space = state_space
-        self.stock_dim = stock_dim
         self.action_space = action_space
         self.tech_indicator_list = tech_indicator_list
         self.add_cash = add_cash
@@ -169,6 +171,9 @@ class portfolioAllocationEnv(gym.Env):
         self.trendReward_memory = [0]
         self.closeReward_memory = [[0]*self.stock_dim]
         self.weightReward_memory = [[0]*self.stock_dim]
+        self.imitate_benchmark_return = [0]*int(len(df)/self.stock_dim)
+        self.model_dict = {}
+        self.benchmark_dict = {}
 
     def step(self, actions):
         self.terminal = self.day >= len(self.df.index.unique())-1
@@ -322,7 +327,17 @@ class portfolioAllocationEnv(gym.Env):
         self.trendReward_memory = [0]
         self.closeReward_memory = [0]
         self.weightReward_memory = [0]
+        self.model_dict = {'pv': 0, 'mdd': 0, 'calmar': 0, 'sharpe': 0, 'sortino': 0, 'var': 0}
+        self.benchmark_dict = {'pv': 0, 'mdd': 0, 'calmar': 0, 'sharpe': 0, 'sortino': 0, 'var': 0}
         
+        if self.imitate_benchmark == 'scaleAction_82':
+            scaleWeight82_actions = getScaleWeightActions(self.df[config.ADD_WINDOW*self.stock_dim:], stock=8, debt=2)
+
+            df_scaleWeight82_return, df_scaleWeight82_portfolio_value = computeReturns(scaleWeight82_actions,self.df, transCostRate=0.001)
+            self.imitate_benchmark_return = df_scaleWeight82_return['daily_return']
+            self.imitate_benchmark_value = df_scaleWeight82_portfolio_value['portfolio_value'][config.ADD_WINDOW:]
+        else:
+            print('no imitate')
         return self.state
     
     def render(self, mode='human'):
