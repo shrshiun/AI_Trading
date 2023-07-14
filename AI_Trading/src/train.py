@@ -23,7 +23,11 @@ def trainPortfolioAllocation(exp, env_train, model_name, model_index, continuous
         train_model.save(save_path + '/A2C_' +  str(model_index) + '.zip')
 
     elif model_name == 'PPO':
-        model_ppo = agent.get_model("ppo",model_kwargs = model_config.PPO_PARAMS)
+        if continuous:
+            model_ppo = model
+            model_ppo.set_env(env_train, force_reset=False)
+        else:
+            model_ppo = agent.get_model("ppo",model_kwargs = model_config.PPO_PARAMS)
         train_model = agent.train_model(model=model_ppo, 
                              tb_log_name='ppo',
                              total_timesteps=total_timesteps)
