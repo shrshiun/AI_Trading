@@ -372,7 +372,7 @@
         
 - **data**
     
-    存放標的 raw data (含 `Date`, `Open`, `High`, `Low`, `Close`, `Adj Close`, `Volume`) ************的資料夾
+    存放標的 raw data (含 `Date`, `Open`, `High`, `Low`, `Close`, `Adj Close`, `Volume`) 的資料夾
     
     - `VTI.csv`:2001/6/15~2022/12/30 VTI ETF 資料
     - `TLT.csv`:2002/7/30~2022/12/30 TLT ETF 資料
