@@ -1,6 +1,7 @@
 empyrical==0.5.5
 gym==0.21.0
 matplotlib==3.5.2
+notebook == 6.5.3
 numpy==1.23.1
 pandas==1.4.3
 plotly==5.10.0
