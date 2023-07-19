@@ -36,12 +36,6 @@ def featureEngineering(data,trainStart, trainEnd, testEnd):
                     use_turbulence=False,
                     user_defined_feature = True)
     data = fe.preprocess_data(data)
-    # if 'macd' in data:
-    #     data.macd = StandardScaler().fit(data[(data.date>=trainStart) & (data.date<trainEnd)].macd.values.reshape(-1,1)).transform(data.macd.values.reshape(-1,1))
-    # if 'macdh' in data:
-    #     data.macdh = StandardScaler().fit(data[(data.date>=trainStart) & (data.date<trainEnd)].macdh.values.reshape(-1,1)).transform(data.macdh.values.reshape(-1,1))
-    # if 'macds' in data:
-    #     data.macds = StandardScaler().fit(data[(data.date>=trainStart) & (data.date<trainEnd)].macds.values.reshape(-1,1)).transform(data.macds.values.reshape(-1,1))
     if 'macd' in data:
         data.macd = MinMaxScaler(feature_range=(-1, 1)).fit(data[(data.date>=trainStart) & (data.date<trainEnd)].macd.values.reshape(-1,1)).transform(data.macd.values.reshape(-1,1))
     if 'macdh' in data:
@@ -75,7 +69,6 @@ def covarianceMatrix(df):
     return_list = []
     return_lookback_list = []
 
-    # look back is one year
     lookback = config.LOOKBACK
     for i in range(lookback,len(df.index.unique())):
         data_lookback = df.loc[i-lookback:i,:]
@@ -153,8 +146,4 @@ def customized_feature(data):
         """
         df = data.copy()
 
-        # df["open_normalized_return"] = df.open.pct_change(1)
-        # df["high_normalized_return"] = df.high.pct_change(1)
-        # df["low_normalized_return"] = df.low.pct_change(1)
-        # df["close_normalized_return"] = df.close.pct_change(1)
         return df

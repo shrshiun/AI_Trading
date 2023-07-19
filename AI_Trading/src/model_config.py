@@ -35,4 +35,3 @@ ERL_PARAMS = {
     "eval_gap": 30,
 }
 RLlib_PARAMS = {"lr": 5e-5, "train_batch_size": 500, "gamma": 0.99}
-TOTAL_TIMESTEPS = 10**6

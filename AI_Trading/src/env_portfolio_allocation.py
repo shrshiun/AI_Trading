@@ -9,7 +9,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from stable_baselines3.common.vec_env import DummyVecEnv
 from AI_Trading.src import config
-from AI_Trading.src.evaluate import *
+from AI_Trading.src.evaluatePortfolioPerformance import *
 import empyrical as ep
 import os.path
 
@@ -365,7 +365,6 @@ class portfolioAllocationEnv(gym.Env):
         denominator = np.sum(np.exp(actions))
         softmax_output = numerator/denominator
         return softmax_output
-
     
     def save_asset_memory(self):
         date_list = self.date_memory
