@@ -4,7 +4,7 @@
 
 使用強化學習方法(RL)，針對美國股債房 ETF (VTI, TLT, VNQ)，進行資產配置，
 
-建立Training、testing、evaluation 建立流程，
+建立Training、testing、evaluation 流程，
 
 並且針對風險設計不同 reward function 進行實驗。
 
