@@ -1,5 +1,13 @@
 # README
 
+# Description
+
+使用強化學習方法(RL)，針對美國股債房 ETF (VTI, TLT, VNQ)，進行資產配置，
+
+建立Training、testing、evaluation 建立流程，
+
+並且針對風險設計不同 reward function 進行實驗。
+
 # Installation
 
 **`pip install -r requirements.txt`**
@@ -40,7 +48,7 @@
 - **results**
     - 儲存 test 的 action
 - **src**
-    - `customizedEnv.py` : 客製化 environment，繼承了`env_portfolio_allocation`中的基礎env，並改寫 `step()` ，目前共自訂了 `windowEnv` 、`imitateEnv` 。
+    - `customizedEnv.py` : 客製化 environment，繼承了`env_portfolio_allocation` 中的基礎env，並改寫 `step()` ，目前共自訂了 `windowEnv` 、`imitateEnv` 。
         
         
         - `computeReward(model_dict, benchmark_dict, all_win=False)`
