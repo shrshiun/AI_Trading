@@ -40,7 +40,7 @@
 - **results**
     - 儲存 test 的 action
 - **src**
-    - `customizedEnv.py` : 客製化 environment，繼承了`env_portfolio_allocation` ****************************************************************************************************************中的基礎env，並改寫 `step()` ，目前共自訂了 `windowEnv` 、`imitateEnv` 。
+    - `customizedEnv.py` : 客製化 environment，繼承了`env_portfolio_allocation`中的基礎env，並改寫 `step()` ，目前共自訂了 `windowEnv` 、`imitateEnv` 。
         
         
         - `computeReward(model_dict, benchmark_dict, all_win=False)`
